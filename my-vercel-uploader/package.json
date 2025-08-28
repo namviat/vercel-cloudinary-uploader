@@ -1,0 +1,13 @@
+{
+  "name": "vercel-cloudinary-uploader",
+  "version": "1.0.0",
+  "description": "A file uploader with Cloudinary backend and Vercel frontend.",
+  "main": "index.html",
+  "dependencies": {
+    "cloudinary": "^1.41.0"
+  },
+  "scripts": {
+    "start": "vercel dev",
+    "deploy": "vercel"
+  }
+}

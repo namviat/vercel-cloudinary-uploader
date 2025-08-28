@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cloudinary File Uploader (Vercel)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- JSZip library for creating ZIP files in the browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+  .wrap{
+    max-width: 1100px;
+    margin: 2rem auto;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0,0,0,.08);
+  }
+  .header{
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #fff;
+    padding: 26px 20px;
+    text-align: center;
+    border-radius: 12px 12px 0 0;
+  }
+  /* Style for selected files */
+  .file-item.selected {
+      border: 2px solid #3b82f6;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  }
+  .delete-btn {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+  .file-item:hover .delete-btn {
+    opacity: 1;
+  }
+</style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+  <div class="wrap w-full">
+    <div class="header">
+      <h1 class="text-2xl md:text-3xl font-bold">☁️ Cloud File Storage</h1>
+      <div class="text-white opacity-90 mt-2 text-sm md:text-base">Upload and download files easily. Powered by Cloudinary.</div>
+    </div>
+
+    <div class="main p-6">
+      <div id="msg" class="hidden p-4 mb-4 rounded-lg text-sm" role="status"></div>
+
+      <div id="uploadBox" class="border-2 border-dashed border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-all duration-150 ease-in-out bg-blue-50 hover:bg-blue-100">
+        <div class="text-5xl">📁</div>
+        <div class="font-bold mt-2 text-gray-800">Drag & Drop files here or click to upload</div>
+        <div class="text-gray-500 mt-1 text-sm">No sign-in required. Files are stored in a public Cloudinary folder.</div>
+
+        <div class="flex items-center justify-center gap-4 mt-4">
+          <input id="fileInput" type="file" multiple class="hidden">
+          <button id="pickBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-full shadow transition-colors">Choose files</button>
+          <button id="syncBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-full transition-colors">Refresh List</button>
+        </div>
+      </div>
+
+      <div class="progress-container hidden mt-4">
+        <div class="w-full bg-gray-200 rounded-full h-2.5">
+          <div id="progressFill" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+        <div id="statusText" class="text-sm mt-1 text-gray-600"></div>
+      </div>
+
+      <div class="mt-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-gray-700">Your Files <span id="count" class="text-sm font-normal text-gray-500 ml-2"></span></h2>
+          <button id="zipBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-full shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Download Selected as ZIP</button>
+        </div>
+        <div id="file-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+          <div class="col-span-full text-center p-8 text-gray-500">No files yet — upload one to get started.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Cloudinary configuration (Only public Cloud Name and Upload Preset needed in frontend)
+  const CLOUD_NAME = 'dzvz7kzin';
+  const UPLOAD_PRESET = 'mycloud_unsigned'; // This must be an unsigned preset in Cloudinary
+  const UPLOAD_FOLDER = 'mycloud';
+  
+  // UI elements
+  const uploadBox = document.getElementById('uploadBox');
+  const pickBtn = document.getElementById('pickBtn');
+  const fileInput = document.getElementById('fileInput');
+  const syncBtn = document.getElementById('syncBtn');
+  const zipBtn = document.getElementById('zipBtn');
+  const fileGrid = document.getElementById('file-grid');
+  const countEl = document.getElementById('count');
+  const msgEl = document.getElementById('msg');
+  const progressContainer = document.querySelector('.progress-container');
+  const progressFill = document.getElementById('progressFill');
+  const statusText = document.getElementById('statusText');
+
+  let files = []; // Current list of files from Cloudinary
+  let selectedFiles = new Set(); // Stores public_ids of selected files
+
+  // Helper functions for UI
+  function showMessage(text, type = 'info') {
+    msgEl.textContent = text;
+    msgEl.classList.remove('hidden', 'bg-red-100', 'bg-yellow-100', 'bg-green-100', 'text-red-700', 'text-yellow-700', 'text-green-700');
+    if (type === 'error') {
+      msgEl.classList.add('bg-red-100', 'text-red-700');
+    } else if (type === 'success') {
+      msgEl.classList.add('bg-green-100', 'text-green-700');
+    } else {
+      msgEl.classList.add('bg-yellow-100', 'text-yellow-700');
+    }
+    setTimeout(() => msgEl.classList.add('hidden'), 4000);
+  }
+
+  function fmtBytes(n) {
+    if (!n) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    while (n >= 1024 && i < units.length - 1) {
+      n /= 1024;
+      i++;
+    }
+    return n.toFixed(2) + ' ' + units[i];
+  }
+
+  function iconForMime(t) {
+    if (!t) return '📄';
+    if (t.startsWith('image/')) return '🖼️';
+    if (t.startsWith('video/')) return '🎥';
+    if (t.includes('pdf')) return '📄';
+    if (t.includes('zip') || t.includes('archive')) return '📦';
+    if (t.startsWith('text/')) return '📃';
+    return '📄';
+  }
+
+  function renderFiles() {
+    countEl.textContent = `(${files.length} files)`;
+    if (files.length === 0) {
+      fileGrid.innerHTML = '<div class="col-span-full text-center p-8 text-gray-500">No files yet — upload one to get started.</div>';
+      zipBtn.disabled = true;
+      return;
+    }
+
+    fileGrid.innerHTML = files.map(f => {
+      const icon = iconForMime(f.format);
+      const size = f.bytes ? fmtBytes(f.bytes) : '';
+      const date = f.created_at ? new Date(f.created_at).toLocaleString() : '';
+      const isSelected = selectedFiles.has(f.public_id);
+      const selectedClass = isSelected ? 'selected' : '';
+
+      return `
+        <div data-public-id="${f.public_id}" class="file-item relative block p-4 bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer ${selectedClass}">
+          <a href="${f.secure_url}" target="_blank" class="block w-full h-full p-4 absolute top-0 left-0"></a>
+          <div class="flex items-center space-x-4 pointer-events-none">
+            <div class="text-3xl">${icon}</div>
+            <div class="min-w-0 flex-1">
+              <div class="font-bold text-gray-800 truncate">${f.filename || f.public_id.split('/').pop()}</div>
+              <div class="text-sm text-gray-500">${size}</div>
+              <div class="text-xs text-gray-400 mt-1">${date}</div>
+            </div>
+          </div>
+          <button class="delete-btn absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 bg-white rounded-full transition-colors" data-public-id="${f.public_id}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    zipBtn.disabled = selectedFiles.size === 0;
+
+    // Add click listeners for selecting files (don't interfere with download link)
+    fileGrid.querySelectorAll('.file-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const publicId = item.dataset.publicId;
+        if (!e.target.closest('.delete-btn')) { // Don't select when clicking the delete button
+          if (selectedFiles.has(publicId)) {
+            selectedFiles.delete(publicId);
+          } else {
+            selectedFiles.add(publicId);
+          }
+          renderFiles(); // Re-render to update selected styles
+        }
+      });
+    });
+
+    // Add click listeners for delete buttons
+    fileGrid.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation(); // Prevent the parent .file-item from being selected
+            const publicId = btn.dataset.publicId;
+            // Use custom modal for confirmation instead of alert() or confirm()
+            const confirmDelete = await showCustomConfirm('Are you sure you want to delete this file? This action cannot be undone.');
+            if (confirmDelete) {
+                await deleteFile(publicId);
+            }
+        });
+    });
+  }
+
+  // File handling
+  uploadBox.addEventListener('dragover', e => {
+    e.preventDefault();
+    uploadBox.classList.add('dragover');
+  });
+
+  uploadBox.addEventListener('dragleave', e => {
+    e.preventDefault();
+    uploadBox.classList.remove('dragover');
+  });
+
+  uploadBox.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadBox.classList.remove('dragover');
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles.length > 0) {
+      uploadFiles(Array.from(droppedFiles));
+    }
+  });
+
+  pickBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    uploadFiles(Array.from(e.target.files));
+    e.target.value = null; // Clear input for next upload
+  });
+  
+  syncBtn.addEventListener('click', fetchFiles);
+  zipBtn.addEventListener('click', downloadSelectedAsZip);
+
+  // Cloudinary API calls
+  async function uploadFiles(filesToUpload) {
+    if (filesToUpload.length === 0) return;
+
+    progressContainer.classList.remove('hidden');
+    progressFill.style.width = '0%';
+    statusText.textContent = 'Starting upload...';
+
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const file = filesToUpload[i];
+      statusText.textContent = `Uploading file ${i + 1} of ${filesToUpload.length}: ${file.name}`;
+      const progress = (i / filesToUpload.length) * 100;
+      progressFill.style.width = `${progress}%`;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', UPLOAD_PRESET);
+      formData.append('folder', UPLOAD_FOLDER);
+      
+      try {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed. Check your Cloudinary configuration.');
+        }
+
+        const data = await response.json();
+        files.unshift(data);
+        renderFiles();
+      } catch (error) {
+        showMessage(`Upload failed for ${file.name}: ${error.message}`, 'error');
+        console.error('Upload Error:', error);
+      }
+    }
+
+    progressFill.style.width = '100%';
+    statusText.textContent = 'All files uploaded successfully!';
+    setTimeout(() => {
+      progressContainer.classList.add('hidden');
+    }, 1000);
+    showMessage('All files uploaded successfully!', 'success');
+    fetchFiles();
+  }
+
+  async function fetchFiles() {
+    progressContainer.classList.remove('hidden');
+    progressFill.style.width = '25%';
+    statusText.textContent = 'Fetching files from Cloudinary...';
+    try {
+      // Call Vercel API Route for listing files
+      const response = await fetch('/api/list-files'); 
+      
+      if (!response.ok) {
+        const errorText = await response.text(); 
+        throw new Error(`Failed to fetch file list from Vercel API. Status: ${response.status}. Message: ${errorText}`);
+      }
+      
+      const resources = await response.json();
+      files = resources.resources.map(file => {
+          const filename = file.public_id.split('/').pop();
+          return { ...file, filename: filename };
+      });
+      renderFiles();
+      showMessage('File list refreshed!', 'success');
+    } catch (error) {
+      showMessage(`Could not fetch file list: ${error.message}`, 'error');
+      console.error('Fetch Error:', error);
+    } finally {
+      progressFill.style.width = '100%';
+      setTimeout(() => {
+        progressContainer.classList.add('hidden');
+      }, 1000);
+    }
+  }
+
+  async function deleteFile(publicId) {
+      progressContainer.classList.remove('hidden');
+      progressFill.style.width = '25%';
+      statusText.textContent = `Deleting ${publicId.split('/').pop()}...`;
+      try {
+          // Call Vercel API Route for deleting files
+          const response = await fetch('/api/delete-file', {
+              method: 'POST', // Use POST for deletion as it sends data in the body
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ public_id: publicId })
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error.message || 'Deletion failed.');
+          }
+
+          showMessage(`File deleted successfully.`, 'success');
+          // Remove file from local list and re-render
+          files = files.filter(f => f.public_id !== publicId);
+          renderFiles();
+      } catch (error) {
+          showMessage(`Deletion failed: ${error.message}`, 'error');
+          console.error('Deletion Error:', error);
+      } finally {
+          progressFill.style.width = '100%';
+          setTimeout(() => {
+              progressContainer.classList.add('hidden');
+          }, 1000);
+      }
+  }
+
+  // Custom confirmation modal (replaces alert/confirm)
+  function showCustomConfirm(message) {
+      return new Promise(resolve => {
+          const modal = document.createElement('div');
+          modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+          modal.innerHTML = `
+              <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+                  <p class="text-gray-800 text-lg font-semibold mb-4">${message}</p>
+                  <div class="flex justify-end space-x-4">
+                      <button id="cancelConfirm" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors">Cancel</button>
+                      <button id="okConfirm" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">Delete</button>
+                  </div>
+              </div>
+          `;
+          document.body.appendChild(modal);
+
+          document.getElementById('okConfirm').addEventListener('click', () => {
+              document.body.removeChild(modal);
+              resolve(true);
+          });
+          document.getElementById('cancelConfirm').addEventListener('click', () => {
+              document.body.removeChild(modal);
+              resolve(false);
+          });
+      });
+  }
+
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchFiles();
+  });
+</script>
+</body>
+</html>
