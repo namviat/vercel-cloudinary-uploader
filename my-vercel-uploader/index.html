@@ -164,12 +164,15 @@ async function ensureToken(token) {
     body: JSON.stringify({ token })
   });
 
+  const data = await res.json();
+
   if (!res.ok) {
-    throw new Error('Token API failed');
+    throw new Error(data.error || 'Token API error');
   }
 
-  return res.json();
+  return data;
 }
+
 
 openBtn.onclick = async () => {
   const token = tokenInput.value.trim();
