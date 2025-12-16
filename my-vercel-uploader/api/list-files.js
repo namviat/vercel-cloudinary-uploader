@@ -8,7 +8,12 @@ module.exports = async (req, res) => {
   const API_SECRET = process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk';
   const UPLOAD_FOLDER = process.env.CLOUDINARY_UPLOAD_FOLDER || 'mycloud';
 
-  // Configure Cloudinary with your credentials
+const token = req.query.token;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Missing token' });
+  }
+
   cloudinary.config({
     cloud_name: CLOUD_NAME,
     api_key: API_KEY,
@@ -16,17 +21,19 @@ module.exports = async (req, res) => {
   });
 
   try {
-    // Make the authenticated request from the serverless function
     const result = await cloudinary.search
-      .expression(`folder=${UPLOAD_FOLDER}`)
+      .expression(`folder:${BASE_FOLDER}/${token}`)
       .sort_by('created_at', 'desc')
-      .max_results(30)
+      .max_results(100)
       .execute();
 
-    // The function is successful, return the file list
-    res.status(200).json({ resources: result.resources });
+    res.status(200).json({
+      token,
+      resources: result.resources
+    });
+
   } catch (error) {
-    console.error('Cloudinary API error:', error);
-    res.status(500).json({ error: 'Failed to fetch files from Cloudinary.' });
+    console.error('Cloudinary list error:', error);
+    res.status(500).json({ error: 'Failed to fetch files' });
   }
 };
