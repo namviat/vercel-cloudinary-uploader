@@ -1,381 +1,913 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Cloudinary File Uploader (Vercel)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- JSZip library for creating ZIP files in the browser -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-  body {
-    font-family: 'Inter', sans-serif;
-  }
-  .wrap{
-    max-width: 1100px;
-    margin: 2rem auto;
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 20px 40px rgba(0,0,0,.08);
-  }
-  .header{
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    color: #fff;
-    padding: 26px 20px;
-    text-align: center;
-    border-radius: 12px 12px 0 0;
-  }
-  /* Style for selected files */
-  .file-item.selected {
-      border: 2px solid #3b82f6;
-      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-  }
-  .delete-btn {
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-  }
-  .file-item:hover .delete-btn {
-    opacity: 1;
-  }
-</style>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-  <div class="wrap w-full">
-    <div class="header">
-      <h1 class="text-2xl md:text-3xl font-bold">☁️ Cloud File Storage</h1>
-      <div class="text-white opacity-90 mt-2 text-sm md:text-base">Upload and download files easily. Powered by Cloudinary.</div>
-    </div>
-
-    <div class="main p-6">
-      <div id="msg" class="hidden p-4 mb-4 rounded-lg text-sm" role="status"></div>
-
-      <div id="uploadBox" class="border-2 border-dashed border-blue-500 rounded-xl p-6 text-center cursor-pointer transition-all duration-150 ease-in-out bg-blue-50 hover:bg-blue-100">
-        <div class="text-5xl">📁</div>
-        <div class="font-bold mt-2 text-gray-800">Drag & Drop files here or click to upload</div>
-        <div class="text-gray-500 mt-1 text-sm">No sign-in required. Files are stored in a public Cloudinary folder.</div>
-
-        <div class="flex items-center justify-center gap-4 mt-4">
-          <input id="fileInput" type="file" multiple class="hidden">
-          <button id="pickBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-full shadow transition-colors">Choose files</button>
-          <button id="syncBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-full transition-colors">Refresh List</button>
-        </div>
-      </div>
-
-      <div class="progress-container hidden mt-4">
-        <div class="w-full bg-gray-200 rounded-full h-2.5">
-          <div id="progressFill" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
-        </div>
-        <div id="statusText" class="text-sm mt-1 text-gray-600"></div>
-      </div>
-
-      <div class="mt-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-gray-700">Your Files <span id="count" class="text-sm font-normal text-gray-500 ml-2"></span></h2>
-          <button id="zipBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-full shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Download Selected as ZIP</button>
-        </div>
-        <div id="file-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-          <div class="col-span-full text-center p-8 text-gray-500">No files yet — upload one to get started.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-<script>
-  // Cloudinary configuration (Only public Cloud Name and Upload Preset needed in frontend)
-  const CLOUD_NAME = 'dzvz7kzin';
-  const UPLOAD_PRESET = 'mycloud_unsigned'; // This must be an unsigned preset in Cloudinary
-  const UPLOAD_FOLDER = 'mycloud';
-  
-  // UI elements
-  const uploadBox = document.getElementById('uploadBox');
-  const pickBtn = document.getElementById('pickBtn');
-  const fileInput = document.getElementById('fileInput');
-  const syncBtn = document.getElementById('syncBtn');
-  const zipBtn = document.getElementById('zipBtn');
-  const fileGrid = document.getElementById('file-grid');
-  const countEl = document.getElementById('count');
-  const msgEl = document.getElementById('msg');
-  const progressContainer = document.querySelector('.progress-container');
-  const progressFill = document.getElementById('progressFill');
-  const statusText = document.getElementById('statusText');
-
-  let files = []; // Current list of files from Cloudinary
-  let selectedFiles = new Set(); // Stores public_ids of selected files
-
-  // Helper functions for UI
-  function showMessage(text, type = 'info') {
-    msgEl.textContent = text;
-    msgEl.classList.remove('hidden', 'bg-red-100', 'bg-yellow-100', 'bg-green-100', 'text-red-700', 'text-yellow-700', 'text-green-700');
-    if (type === 'error') {
-      msgEl.classList.add('bg-red-100', 'text-red-700');
-    } else if (type === 'success') {
-      msgEl.classList.add('bg-green-100', 'text-green-700');
-    } else {
-      msgEl.classList.add('bg-yellow-100', 'text-yellow-700');
-    }
-    setTimeout(() => msgEl.classList.add('hidden'), 4000);
-  }
-
-  function fmtBytes(n) {
-    if (!n) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0;
-    while (n >= 1024 && i < units.length - 1) {
-      n /= 1024;
-      i++;
-    }
-    return n.toFixed(2) + ' ' + units[i];
-  }
-
-  function iconForMime(t) {
-    if (!t) return '📄';
-    if (t.startsWith('image/')) return '🖼️';
-    if (t.startsWith('video/')) return '🎥';
-    if (t.includes('pdf')) return '📄';
-    if (t.includes('zip') || t.includes('archive')) return '📦';
-    if (t.startsWith('text/')) return '📃';
-    return '📄';
-  }
-
-  function renderFiles() {
-    countEl.textContent = `(${files.length} files)`;
-    if (files.length === 0) {
-      fileGrid.innerHTML = '<div class="col-span-full text-center p-8 text-gray-500">No files yet — upload one to get started.</div>';
-      zipBtn.disabled = true;
-      return;
-    }
-
-    fileGrid.innerHTML = files.map(f => {
-      const icon = iconForMime(f.format);
-      const size = f.bytes ? fmtBytes(f.bytes) : '';
-      const date = f.created_at ? new Date(f.created_at).toLocaleString() : '';
-      const isSelected = selectedFiles.has(f.public_id);
-      const selectedClass = isSelected ? 'selected' : '';
-
-      return `
-        <div data-public-id="${f.public_id}" class="file-item relative block p-4 bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer ${selectedClass}">
-          <a href="${f.secure_url}" target="_blank" class="block w-full h-full p-4 absolute top-0 left-0"></a>
-          <div class="flex items-center space-x-4 pointer-events-none">
-            <div class="text-3xl">${icon}</div>
-            <div class="min-w-0 flex-1">
-              <div class="font-bold text-gray-800 truncate">${f.filename || f.public_id.split('/').pop()}</div>
-              <div class="text-sm text-gray-500">${size}</div>
-              <div class="text-xs text-gray-400 mt-1">${date}</div>
-            </div>
-          </div>
-          <button class="delete-btn absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 bg-white rounded-full transition-colors" data-public-id="${f.public_id}">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-          </button>
-        </div>
-      `;
-    }).join('');
-
-    zipBtn.disabled = selectedFiles.size === 0;
-
-    // Add click listeners for selecting files (don't interfere with download link)
-    fileGrid.querySelectorAll('.file-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        const publicId = item.dataset.publicId;
-        if (!e.target.closest('.delete-btn')) { // Don't select when clicking the delete button
-          if (selectedFiles.has(publicId)) {
-            selectedFiles.delete(publicId);
-          } else {
-            selectedFiles.add(publicId);
-          }
-          renderFiles(); // Re-render to update selected styles
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qloud - Token-Based Cloud Storage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500&family=Rajdhani:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
+    <style>
+        :root {
+            --color-background: #0A0A0F;
+            --color-foreground: #FFFFFF;
+            --color-card: #1A1A2E;
+            --color-card-foreground: #FFFFFF;
+            --color-popover: #1A1A2E;
+            --color-popover-foreground: #FFFFFF;
+            --color-muted: #1A1A2E;
+            --color-muted-foreground: #A0A0B0;
+            --color-border: rgba(255, 255, 255, 0.1);
+            --color-input: #1A1A2E;
+            --color-ring: #00D4FF;
+            --color-primary: #00D4FF;
+            --color-primary-foreground: #0A0A0F;
+            --color-secondary: #8B5CF6;
+            --color-secondary-foreground: #FFFFFF;
+            --color-accent: #00FF88;
+            --color-accent-foreground: #0A0A0F;
+            --color-destructive: #FF4757;
+            --color-destructive-foreground: #FFFFFF;
+            --color-success: #00FF88;
+            --color-success-foreground: #0A0A0F;
+            --color-warning: #FFB800;
+            --color-warning-foreground: #0A0A0F;
+            --color-error: #FF4757;
+            --color-error-foreground: #FFFFFF;
+            --color-neon-cyan: #00FFFF;
+            --color-neon-magenta: #FF00FF;
+            --color-matrix-green: #00FF88;
+            --color-digital-gold: #FFD700;
+            --color-deep-space: #0A0A1E;
+            --color-silver-gray: #B0B0B0;
+            --radius: 8px;
         }
-      });
-    });
+        * { border-color: var(--color-border); box-sizing: border-box; }
+        body { background-color: var(--color-background); color: var(--color-foreground); font-family: 'Inter', sans-serif; font-weight: 400; margin: 0; padding: 0; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Orbitron', sans-serif; }
+        button { font-family: 'Rajdhani', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .text-balance { text-wrap: balance; }
+        .glow-primary { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+        .glow-primary-strong { box-shadow: 0 0 30px rgba(0, 212, 255, 0.5); }
+        .glow-accent { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+        .glow-secondary { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+        .depth-shadow { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+        .border-glow { border: 1px solid rgba(0, 255, 255, 0.3); }
+        .transition-smooth { transition: all 0.3s ease-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-spin-slow { animation: spin-slow 20s linear infinite; }
+        .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+        .bg-gradient-to-br { background: linear-gradient(to bottom right, var(--color-primary), var(--color-secondary)); }
+        .bg-gradient-to-r { background: linear-gradient(to right, var(--color-primary), var(--color-secondary)); }
+        .text-transparent { color: transparent; }
+        .bg-clip-text { -webkit-background-clip: text; background-clip: text; }
+        .backdrop-blur-xl { backdrop-filter: blur(20px); }
+        .rounded-xl { border-radius: 12px; }
+        .rounded-2xl { border-radius: 16px; }
+        .p-6 { padding: 1.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mb-12 { margin-bottom: 3rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-6 { margin-top: 1.5rem; }
+        .mt-24 { margin-top: 6rem; }
+        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+        .py-12 { padding-top: 3rem; padding-bottom: 3rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .px-8 { padding-left: 2rem; padding-right: 2rem; }
+        .text-center { text-align: center; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .gap-6 { gap: 1.5rem; }
+        .gap-8 { gap: 2rem; }
+        .w-full { width: 100%; }
+        .max-w-md { max-width: 28rem; }
+        .max-w-2xl { max-width: 42rem; }
+        .max-w-4xl { max-width: 56rem; }
+        .max-w-6xl { max-width: 72rem; }
+        .max-w-7xl { max-width: 80rem; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .hidden { display: none; }
+        .grid { display: grid; }
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .md\:grid-cols-2 { } /* Media queries below */
+        .lg\:grid-cols-3 { }
+        @media (min-width: 768px) { .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (min-width: 1024px) { .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        .border { border-width: 1px; }
+        .border-b { border-bottom-width: 1px; }
+        .bg-card { background-color: var(--color-card); }
+        .bg-muted { background-color: var(--color-muted); }
+        .text-foreground { color: var(--color-foreground); }
+        .text-muted-foreground { color: var(--color-muted-foreground); }
+        .text-primary { color: var(--color-primary); }
+        .text-destructive { color: var(--color-destructive); }
+        .font-bold { font-weight: 700; }
+        .font-semibold { font-weight: 600; }
+        .text-xl { font-size: 1.25rem; }
+        .text-3xl { font-size: 1.875rem; }
+        .text-4xl { font-size: 2.25rem; }
+        .leading-relaxed { line-height: 1.625; }
+        /* Add more Tailwind-like classes as needed for the components */
+        .space-y-4 > * + * { margin-top: 1rem; }
+        .space-y-6 > * + * { margin-top: 1.5rem; }
+        .rounded-full { border-radius: 9999px; }
+        .rounded-lg { border-radius: 8px; }
+        .p-4 { padding: 1rem; }
+        .pt-4 { padding-top: 1rem; }
+        .absolute { position: absolute; }
+        .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+        .top-0 { top: 0; }
+        .left-0 { left: 0; }
+        .right-0 { right: 0; }
+        .bottom-0 { bottom: 0; }
+        .z-10 { z-index: 10; }
+        .z-20 { z-index: 20; }
+        .z-30 { z-index: 30; }
+        .z-50 { z-index: 50; }
+        .overflow-hidden { overflow: hidden; }
+        .overflow-auto { overflow: auto; }
+        .cursor-pointer { cursor: pointer; }
+        .opacity-20 { opacity: 0.2; }
+        .opacity-50 { opacity: 0.5; }
+        .hover\:opacity-80:hover { opacity: 0.8; }
+        .hover\:scale-105:hover { transform: scale(1.05); }
+        .hover\:bg-muted:hover { background-color: var(--color-muted); }
+        .focus\:ring-2:focus { box-shadow: 0 0 0 2px var(--color-ring); }
+        .focus\:outline-none:focus { outline: none; }
+        .disabled\:opacity-50:disabled { opacity: 0.5; }
+        .disabled\:cursor-not-allowed:disabled { cursor: not-allowed; }
+        .min-h-screen { min-height: 100vh; }
+        .fixed { position: fixed; }
+        .bg-black { background-color: black; }
+        .pt-20 { padding-top: 5rem; }
+        .border-t { border-top-width: 1px; }
+        .flex-col { flex-direction: column; }
+        .sm\:flex-row { }
+        @media (min-width: 640px) { .sm\:flex-row { flex-direction: row; } }
+        .lg\:col-span-2 { }
+        .lg\:col-span-1 { }
+        @media (min-width: 1024px) { .lg\:col-span-2 { grid-column: span 2 / span 2; } .lg\:col-span-1 { grid-column: span 1 / span 1; } }
+        .sticky { position: sticky; }
+        .top-24 { top: 6rem; }
+        .w-96 { width: 24rem; }
+        .max-w-\[calc\(100vw-4rem\)\] { max-width: calc(100vw - 4rem); }
+        .max-h-96 { max-height: 24rem; }
+        .last\:border-b-0:last-child { border-bottom-width: 0; }
+        .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .break-all { word-break: break-all; }
+        .aspect-square { aspect-ratio: 1; }
+        .object-cover { object-fit: cover; }
+        .h-1\.5 { height: 0.375rem; }
+        .text-xs { font-size: 0.75rem; }
+        .text-sm { font-size: 0.875rem; }
+        .tracking-widest { letter-spacing: 0.1em; }
+        .pt-8 { padding-top: 2rem; }
+        .block { display: block; }
+        .contents { display: contents; }
+        .col-span-1 { grid-column: span 1 / span 1; }
+        .md\:col-span-2 { }
+        @media (min-width: 768px) { .md\:col-span-2 { grid-column: span 2 / span 2; } }
+        .sm\:gap-4 { }
+        @media (min-width: 640px) { .sm\:gap-4 { gap: 1rem; } }
+        .flex-1 { flex: 1 1 0%; }
+        .min-w-0 { min-width: 0; }
+        .mr-2 { margin-right: 0.5rem; }
+        .flex-shrink-0 { flex-shrink: 0; }
+        .w-8 { width: 2rem; }
+        .h-8 { height: 2rem; }
+        .w-3 { width: 0.75rem; }
+        .h-3 { height: 0.75rem; }
+        .w-2 { width: 0.5rem; }
+        .h-2 { height: 0.5rem; }
+        .mt-0\.5 { margin-top: 0.125rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .w-14 { width: 3.5rem; }
+        .h-14 { height: 3.5rem; }
+        .w-12 { width: 3rem; }
+        .h-12 { height: 3rem; }
+        .w-6 { width: 1.5rem; }
+        .h-6 { height: 1.5rem; }
+        .w-16 { width: 4rem; }
+        .h-16 { height: 4rem; }
+        .w-32 { width: 8rem; }
+        .h-32 { height: 8rem; }
+        .w-64 { width: 16rem; }
+        .h-64 { height: 16rem; }
+        .h-40 { height: 10rem; }
+        .h-24 { height: 6rem; }
+        .h-4 { height: 1rem; }
+        .h-2 { height: 0.5rem; }
+        .p-3 { padding: 0.75rem; }
+        .p-1 { padding: 0.25rem; }
+        .p-1\.5 { padding: 0.375rem; }
+        .-bottom-1 { bottom: -0.25rem; }
+        .-right-1 { right: -0.25rem; }
+        .-translate-x-1\/2 { transform: translateX(-50%); }
+        .-translate-y-1\/2 { transform: translateY(-50%); }
+        .scale-110 { transform: scale(1.1); }
+        .border-2 { border-width: 2px; }
+        .bg-primary\/10 { background-color: rgba(0, 212, 255, 0.1); }
+        .bg-primary\/20 { background-color: rgba(0, 212, 255, 0.2); }
+        .bg-destructive\/10 { background-color: rgba(255, 71, 87, 0.1); }
+        .bg-destructive\/20 { background-color: rgba(255, 71, 87, 0.2); }
+        .bg-accent\/20 { background-color: rgba(0, 255, 136, 0.2); }
+        .bg-primary { background-color: var(--color-primary); }
+        .text-primary-foreground { color: var(--color-primary-foreground); }
+        .border-primary { border-color: var(--color-primary); }
+        .hover\:bg-primary\/90:hover { background-color: rgba(0, 212, 255, 0.9); }
+        .border-border { border-color: var(--color-border); }
+        .hover\:bg-accent:hover { background-color: var(--color-accent); }
+        .hover\:text-accent-foreground:hover { color: var(--color-accent-foreground); }
+        .text-onBackground { color: var(--color-foreground); }
+        .bg-background { background-color: var(--color-background); }
+        .p-2 { padding: 0.5rem; }
+        .gap-3 { gap: 0.75rem; }
+        .text-2xl { font-size: 1.5rem; }
+        .font-medium { font-weight: 500; }
+        .opacity-70 { opacity: 0.7; }
+        .text-9xl { font-size: 8rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .max-w-md { max-width: 28rem; }
+        .inline-flex { display: inline-flex; }
+        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        .duration-200 { transition-duration: 200ms; }
+        .w-48 { width: 12rem; }
+        .shadow-depth-shadow { box-shadow: var(--depth-shadow); }
+        .overflow-hidden { overflow: hidden; }
+        .text-left { text-align: left; }
+        .justify-start { justify-content: flex-start; }
+        .flex-wrap { flex-wrap: wrap; }
+        .sm\:flex-nowrap { }
+        @media (min-width: 640px) { .sm\:flex-nowrap { flex-wrap: nowrap; } }
+        .border-x { border-left-width: 1px; border-right-width: 1px; }
+        .border-primary\/50 { border-color: rgba(0, 212, 255, 0.5); }
+        .hover\:border-primary\/50:hover { border-color: rgba(0, 212, 255, 0.5); }
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .sm\:grid-cols-2 { }
+        .lg\:grid-cols-3 { }
+        .gap-4 { gap: 1rem; }
+        .sm\:grid-cols-2 { }
+        @media (min-width: 640px) { .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        @media (min-width: 1024px) { .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        .bg-card\/50 { background-color: rgba(26, 26, 46, 0.5); }
+        .border-primary\/30 { border-color: rgba(0, 212, 255, 0.3); }
+        .bg-primary\/30 { background-color: rgba(0, 212, 255, 0.3); }
+        .bg-secondary\/50 { background-color: rgba(139, 92, 246, 0.5); }
+        .bg-accent\/30 { background-color: rgba(0, 255, 136, 0.3); }
+        .bg-transparent { background-color: transparent; }
+        .rotate-45 { transform: rotate(45deg); }
+        .rotate-12 { transform: rotate(12deg); }
+        .top-1\/4 { top: 25%; }
+        .left-1\/4 { left: 25%; }
+        .bottom-1\/4 { bottom: 25%; }
+        .right-1\/4 { right: 25%; }
+        .top-1\/3 { top: 33.333%; }
+        .right-1\/3 { right: 33.333%; }
+        .bottom-8 { bottom: 2rem; }
+        .left-1\/2 { left: 50%; }
+        .-translate-x-1\/2 { transform: translateX(-50%); }
+        .text-6xl { font-size: 3.75rem; }
+        .font-black { font-weight: 900; }
+        .mt-2 { margin-top: 0.5rem; }
+        .tracking-widest { letter-spacing: 0.1em; }
+        .relative { position: relative; }
+        .overflow-hidden { overflow: hidden; }
+        .w-full { width: 100%; }
+        .h-96 { height: 24rem; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .w-16 { width: 4rem; }
+        .h-16 { height: 4rem; }
+        .border-primary { border-color: var(--color-primary); }
+        .rounded-full { border-radius: 50%; }
+        .object-cover { object-fit: cover; }
+        .bg-gradient-to-br { background: linear-gradient(to bottom right, var(--color-primary), var(--color-secondary)); }
+        .-bottom-1 { bottom: -4px; }
+        .-right-1 { right: -4px; }
+        .scale-110 { transform: scale(1.1); }
+        .h-2 { height: 8px; }
+        .bg-muted { background-color: var(--color-muted); }
+        .rounded-full { border-radius: 9999px; }
+        .overflow-hidden { overflow: hidden; }
+        .bg-gradient-to-r { background: linear-gradient(to right, var(--color-primary), var(--color-secondary)); }
+        .transition-all { transition-property: all; }
+        .duration-500 { transition-duration: 500ms; }
+        .p-3 { padding: 12px; }
+        .bg-muted { background-color: var(--color-muted); }
+        .rounded-lg { border-radius: 8px; }
+        .flex-shrink-0 { flex-shrink: 0; }
+        .mt-0\.5 { margin-top: 2px; }
+        .w-2 { width: 8px; }
+        .h-2 { height: 8px; }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .fixed { position: fixed; }
+        .bottom-8 { bottom: 2rem; }
+        .left-1\/2 { left: 50%; }
+        .-translate-x-1\/2 { transform: translateX(-50%); }
+        .z-30 { z-index: 30; }
+        .w-px { width: 1px; }
+        .h-6 { height: 1.5rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        .gap-3 { gap: 0.75rem; }
+        .text-left { text-align: left; }
+        .w-56 { width: 14rem; }
+        .right-0 { right: 0; }
+        .mt-2 { margin-top: 0.5rem; }
+        .justify-between { justify-content: space-between; }
+        .border-t { border-top-width: 1px; }
+        .border-border { border-color: var(--color-border); }
+        .text-warning { color: var(--color-warning); }
+        .inset-0 { inset: 0px; }
+        .bg-background\/80 { background-color: rgba(10, 10, 15, 0.8); }
+        .backdrop-blur-sm { backdrop-filter: blur(4px); }
+        .z-50 { z-index: 50; }
+        .p-4 { padding: 1rem; }
+        .max-w-md { max-width: 28rem; }
+        .flex-col { flex-direction: column; }
+        .sm\:flex-row { }
+        .items-start { align-items: flex-start; }
+        .sm\:items-center { }
+        @media (min-width: 640px) { .sm\:items-center { align-items: center; } }
+        .pl-12 { padding-left: 3rem; }
+        .pr-4 { padding-right: 1rem; }
+        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+        .bg-input { background-color: var(--color-input); }
+        .placeholder\:text-muted-foreground::placeholder { color: var(--color-muted-foreground); }
+        .font-jetbrains { font-family: 'JetBrains Mono', monospace; }
+        .gap-2 { gap: 0.5rem; }
+        .text-destructive { color: var(--color-destructive); }
+        .flex-col { flex-direction: column; }
+        .sm\:flex-row { }
+        @media (min-width: 640px) { .sm\:flex-row { flex-direction: row; } }
+        .disabled { opacity: 0.5; cursor: not-allowed; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .items-start { align-items: flex-start; }
+        .gap-3 { gap: 0.75rem; }
+        .text-sm { font-size: 0.875rem; }
+        .flex-shrink-0 { flex-shrink: 0; }
+        .mt-0\.5 { margin-top: 0.125rem; }
+        .information-circle { /* Icon placeholder */ }
+        .w-full { width: 100%; }
+        .h-full { height: 100%; }
+        .opacity-0 { opacity: 0; }
+        .z-10 { z-index: 10; }
+        .aspect-square { aspect-ratio: 1; }
+        .bg-muted { background-color: var(--color-muted); }
+        .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mb-1 { margin-bottom: 0.25rem; }
+        .border-primary\/50 { border-color: rgba(0, 212, 255, 0.5); }
+        .hover\:shadow-glow-primary:hover { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+        .top-3 { top: 0.75rem; }
+        .left-3 { left: 0.75rem; }
+        .right-3 { right: 0.75rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .w-48 { width: 12rem; }
+        .p-2 { padding: 0.5rem; }
+        .bg-card\/80 { background-color: rgba(26, 26, 46, 0.8); }
+        .backdrop-blur-sm { backdrop-filter: blur(4px); }
+        .border-border { border-color: var(--color-border); }
+        .hover\:border-primary:hover { border-color: var(--color-primary); }
+        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        .flex-1 { flex: 1 1 0%; }
+        .min-w-0 { min-width: 0; }
+        .mr-2 { margin-right: 0.5rem; }
+        .flex-shrink-0 { flex-shrink: 0; }
+        .w-12 { width: 3rem; }
+        .h-12 { height: 3rem; }
+        .w-24 { width: 6rem; }
+        .h-24 { height: 6rem; }
+        .flex-wrap { flex-wrap: wrap; }
+        .sm\:flex-nowrap { }
+        .border-x { border-left-width: 1px; border-right-width: 1px; }
+        .p-1 { padding: 0.25rem; }
+        .h-1 { height: 0.25rem; }
+        .bg-border { background-color: var(--color-border); }
+        .last\:border-b-0:last-child { border-bottom-width: 0; }
+        .text-success { color: var(--color-success); }
+        .bottom-8 { bottom: 2rem; }
+        .right-8 { right: 2rem; }
+        .max-h-96 { max-height: 24rem; }
+        .overflow-y-auto { overflow-y: auto; }
+        .border-b { border-bottom-width: 1px; }
+        .last:border-b-0:last-child { border-bottom-width: 0; }
+        .p-2 { padding: 0.5rem; }
+        .hover\:bg-muted:hover { background-color: var(--color-muted); }
+        .text-xs { font-size: 0.75rem; }
+        .font-medium { font-weight: 500; }
+        .bg-accent\/20 { background-color: rgba(0, 255, 136, 0.2); }
+        .bg-primary\/20 { background-color: rgba(0, 212, 255, 0.2); }
+        .w-56 { width: 14rem; }
+        .right-0 { right: 0; }
+        .mt-2 { margin-top: 0.5rem; }
+        .justify-between { justify-content: space-between; }
+        .border-t { border-top-width: 1px; }
+        .border-border { border-color: var(--color-border); }
+        .text-warning { color: var(--color-warning); }
+        .inset-0 { inset: 0px; }
+        .bg-background\/80 { background-color: rgba(10, 10, 15, 0.8); }
+        .backdrop-blur-sm { backdrop-filter: blur(4px); }
+        .z-50 { z-index: 50; }
+        .p-4 { padding: 1rem; }
+        .max-w-md { max-width: 28rem; }
+        .flex-col { flex-direction: column; }
+        .sm\:flex-row { }
+        .items-start { align-items: flex-start; }
+        .sm\:items-center { }
+        .pl-12 { padding-left: 3rem; }
+        .pr-4 { padding-right: 1rem; }
+        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+        .bg-input { background-color: var(--color-input); }
+        .placeholder\:text-muted-foreground::placeholder { color: var(--color-muted-foreground); }
+        .font-jetbrains { font-family: 'JetBrains Mono', monospace; }
+        .gap-2 { gap: 0.5rem; }
+        .text-destructive { color: var(--color-destructive); }
+        .flex-col { flex-direction: column; }
+        .sm\:flex-row { }
+        .disabled { opacity: 0.5; cursor: not-allowed; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        .items-start { align-items: flex-start; }
+        .gap-3 { gap: 0.75rem; }
+        .text-sm { font-size: 0.875rem; }
+        .flex-shrink-0 { flex-shrink: 0; }
+        .mt-0\.5 { margin-top: 0.125rem; }
+        .information-circle { /* Icon placeholder */ }
+        /* Heroicons placeholders - in JS, use SVG strings or CDN */
+        .icon { display: inline-block; vertical-align: middle; width: 1em; height: 1em; }
+        /* Add more as needed */
+    </style>
+</head>
+<body class="min-h-screen bg-black">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-glow">
+        <div class="w-full px-8 py-4">
+            <div class="flex items-center justify-between">
+                <a href="/" class="flex items-center gap-3 group transition-smooth hover:scale-105">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="glow-primary">
+                        <path d="M20 5L8 15V30L20 35L32 30V15L20 5Z" stroke="url(#gradient)" stroke-width="2" fill="none" class="transition-smooth group-hover:fill-primary/10"/>
+                        <circle cx="20" cy="20" r="4" fill="url(#gradient)" class="animate-glow-pulse"/>
+                        <defs>
+                            <linearGradient id="gradient" x1="8" y1="5" x2="32" y2="35" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#00D4FF"/>
+                                <stop offset="1" stop-color="#8B5CF6"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <span class="text-2xl font-orbitron font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Qloud</span>
+                </a>
+                <nav class="hidden md:flex items-center gap-8">
+                    <a href="/" class="flex items-center gap-2 text-foreground/80 hover:text-primary transition-smooth font-rajdhani font-medium text-lg group">
+                        <span class="icon">🏠</span> <!-- HomeIcon placeholder -->
+                        <span>Home</span>
+                    </a>
+                    <a href="/upload.html" class="flex items-center gap-2 text-foreground/80 hover:text-primary transition-smooth font-rajdhani font-medium text-lg group">
+                        <span class="icon">☁️</span> <!-- CloudArrowUpIcon placeholder -->
+                        <span>Upload</span>
+                    </a>
+                </nav>
+                <div class="hidden md:flex items-center gap-4">
+                    <a href="/upload.html" class="px-6 py-2.5 bg-gradient-to-r from-primary to-secondary rounded-lg font-rajdhani font-semibold text-primary-foreground hover:shadow-glow-primary-strong transition-smooth hover:scale-105">Get Started</a>
+                </div>
+                <button class="md:hidden p-2 text-foreground hover:text-primary transition-smooth" onclick="toggleMobileMenu()">☰</button>
+            </div>
+            <nav id="mobile-menu" class="hidden md:hidden mt-4 pt-4 border-t border-glow">
+                <div class="flex flex-col gap-4">
+                    <a href="/" onclick="closeMobileMenu()" class="flex items-center gap-3 text-foreground/80 hover:text-primary transition-smooth font-rajdhani font-medium text-lg p-2 rounded-lg hover:bg-muted">
+                        <span class="icon">🏠</span>
+                        <span>Home</span>
+                    </a>
+                    <a href="/upload.html" onclick="closeMobileMenu()" class="flex items-center gap-3 text-foreground/80 hover:text-primary transition-smooth font-rajdhani font-medium text-lg p-2 rounded-lg hover:bg-muted">
+                        <span class="icon">☁️</span>
+                        <span>Upload</span>
+                    </a>
+                    <a href="/upload.html" onclick="closeMobileMenu()" class="mt-2 px-6 py-2.5 bg-gradient-to-r from-primary to-secondary rounded-lg font-rajdhani font-semibold text-primary-foreground text-center hover:shadow-glow-primary-strong transition-smooth">Get Started</a>
+                </div>
+            </nav>
+        </div>
+    </header>
 
-    // Add click listeners for delete buttons
-    fileGrid.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation(); // Prevent the parent .file-item from being selected
-            const publicId = btn.dataset.publicId;
-            // Use custom modal for confirmation instead of alert() or confirm()
-            const confirmDelete = await showCustomConfirm('Are you sure you want to delete this file? This action cannot be undone.');
-            if (confirmDelete) {
-                await deleteFile(publicId);
+    <div class="pt-20">
+        <div class="space-y-16 py-8">
+            <!-- Hero Section with 3D Cloud -->
+            <section class="relative">
+                <div id="cloud-container" class="relative w-full h-96 flex items-center justify-center overflow-hidden">
+                    <!-- Animated Background Grid -->
+                    <div class="absolute inset-0 opacity-20">
+                        <div class="absolute inset-0" style="background-image: linear-gradient(rgba(0, 212, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 212, 255, 0.1) 1px, transparent 1px); background-size: 50px 50px; transform: perspective(500px) rotateX(60deg) translateZ(-100px);"></div>
+                    </div>
+                    <!-- Floating Particles -->
+                    <div class="absolute w-1 h-1 bg-primary rounded-full glow-primary animate-float" style="left: 10%; top: 20%; animation-delay: 0s; animation-duration: 7s;"></div>
+                    <div class="absolute w-1 h-1 bg-primary rounded-full glow-primary animate-float" style="left: 20%; top: 80%; animation-delay: 1s; animation-duration: 6s;"></div>
+                    <!-- Add more particles as in component -->
+                    <!-- Main 3D Cloud Structure -->
+                    <div id="cloud-structure" class="relative w-64 h-64 transition-transform duration-300 ease-out">
+                        <!-- Central Core -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-32 h-32 bg-gradient-to-br from-primary via-secondary to-accent rounded-full glow-primary-strong animate-pulse-slow"></div>
+                        </div>
+                        <!-- Orbiting Rings -->
+                        <div class="absolute inset-0 border-2 border-primary/30 rounded-full animate-spin-slow" style="width: 160px; height: 160px; margin: auto; animation-duration: 10s; animation-delay: 0s;">
+                            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-accent rounded-full glow-accent"></div>
+                        </div>
+                        <div class="absolute inset-0 border-2 border-primary/30 rounded-full animate-spin-slow" style="width: 200px; height: 200px; margin: auto; animation-duration: 15s; animation-delay: 2s;">
+                            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-accent rounded-full glow-accent"></div>
+                        </div>
+                        <div class="absolute inset-0 border-2 border-primary/30 rounded-full animate-spin-slow" style="width: 240px; height: 240px; margin: auto; animation-duration: 20s; animation-delay: 4s;">
+                            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-accent rounded-full glow-accent"></div>
+                        </div>
+                        <!-- Geometric Shapes -->
+                        <div class="absolute top-1/4 left-1/4 w-12 h-12 border-2 border-secondary/50 rotate-45 animate-float glow-secondary"></div>
+                        <div class="absolute bottom-1/4 right-1/4 w-16 h-16 border-2 border-primary/50 rounded-full animate-float glow-primary" style="animation-delay: 2s;"></div>
+                        <div class="absolute top-1/3 right-1/3 w-10 h-10 bg-gradient-to-br from-accent/30 to-transparent rotate-12 animate-float" style="animation-delay: 4s;"></div>
+                    </div>
+                    <!-- Holographic Text -->
+                    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
+                        <div class="text-6xl font-orbitron font-black bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent animate-pulse-slow">Qloud</div>
+                        <div class="text-sm font-inter text-muted-foreground mt-2 tracking-widest">THE FUTURE OF FILE FREEDOM</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Token Input Section -->
+            <section class="px-4">
+                <div class="w-full max-w-2xl mx-auto">
+                    <div class="bg-card/50 backdrop-blur-xl rounded-2xl p-8 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary">
+                        <div class="text-center mb-8">
+                            <h2 class="text-3xl font-orbitron font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-3">Enter Your Token</h2>
+                            <p class="text-muted-foreground font-inter">Access your cloud storage or create a new token to get started</p>
+                        </div>
+                        <form id="token-form" class="space-y-6">
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">🔑</span> <!-- KeyIcon -->
+                                <input type="text" id="token-input" placeholder="QLT-XXXXXXXXXXXX" class="w-full pl-12 pr-4 py-4 bg-input border border-glow rounded-xl text-foreground placeholder:text-muted-foreground font-jetbrains focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-smooth">
+                            </div>
+                            <div id="token-error" class="hidden flex items-center gap-2 text-destructive text-sm font-inter">
+                                <span>⚠️</span>
+                                <span></span>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <button type="submit" id="submit-btn" class="flex-1 px-6 py-4 bg-gradient-to-r from-primary to-secondary rounded-xl font-rajdhani font-semibold text-primary-foreground hover:shadow-glow-primary-strong transition-smooth hover:scale-105 flex items-center justify-center gap-2">
+                                    <span id="submit-icon">➡️</span>
+                                    <span id="submit-text">Access Storage</span>
+                                </button>
+                                <button type="button" id="generate-btn" class="px-6 py-4 border border-border rounded-xl font-rajdhani text-foreground hover:bg-accent hover:text-accent-foreground transition-smooth">✨ Generate New</button>
+                            </div>
+                        </form>
+                        <div class="mt-6 pt-6 border-t border-glow">
+                            <div class="flex items-start gap-3 text-sm text-muted-foreground font-inter">
+                                <span class="text-primary flex-shrink-0 mt-0.5">ℹ️</span> <!-- InformationCircleIcon -->
+                                <p>Your token is your key to access your files. Keep it safe and never share it with anyone. Lost tokens cannot be recovered.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Storage Meter Section -->
+            <section class="px-4">
+                <div class="w-full max-w-md mx-auto">
+                    <div class="bg-card/50 backdrop-blur-xl rounded-2xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-accent">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-orbitron font-bold text-foreground flex items-center gap-2">
+                                <span class="icon">📚</span> <!-- CircleStackIcon -->
+                                Storage Usage
+                            </h3>
+                            <div class="px-3 py-1 bg-primary/20 rounded-full">
+                                <span id="storage-percentage" class="text-sm font-jetbrains font-medium text-primary">24%</span>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="relative h-4 bg-muted rounded-full overflow-hidden">
+                                <div id="storage-fill" class="absolute inset-y-0 left-0 bg-gradient-to-r from-accent to-primary rounded-full transition-all duration-1000 ease-out glow-primary" style="width: 24%;"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-sm font-inter">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-accent to-primary glow-primary"></div>
+                                    <span class="text-muted-foreground">Used</span>
+                                    <span id="used-size" class="font-semibold text-foreground font-jetbrains">2.4 GB</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-muted-foreground">Total</span>
+                                    <span class="font-semibold text-foreground font-jetbrains">10.0 GB</span>
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t border-glow">
+                                <div class="flex items-center justify-between text-xs text-muted-foreground font-inter">
+                                    <span>Available Space</span>
+                                    <span id="available-size" class="font-semibold text-accent font-jetbrains">7.6 GB remaining</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Token Statistics Section -->
+            <section class="px-4">
+                <div class="w-full max-w-6xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-orbitron font-bold text-foreground mb-2">Live Network Statistics</h2>
+                        <p class="text-muted-foreground font-inter">Real-time metrics from the Qloud ecosystem</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="p-3 rounded-lg bg-gradient-to-br from-primary to-secondary bg-opacity-20">
+                                    <span class="icon text-primary group-hover:scale-110 transition-smooth">🔑</span> <!-- KeyIcon -->
+                                </div>
+                                <div class="px-2 py-1 rounded-full text-xs font-jetbrains font-medium bg-accent/20 text-accent">+12%</div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="text-3xl font-orbitron font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">12,847</div>
+                                <div class="text-sm text-muted-foreground font-inter">Active Tokens</div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-glow">
+                                <div class="flex items-center gap-2 text-xs text-muted-foreground font-inter">
+                                    <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                                    <span>Live Data</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Add other 3 stats similarly with mock data -->
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="p-3 rounded-lg bg-gradient-to-br from-accent to-primary bg-opacity-20">
+                                    <span class="icon text-primary group-hover:scale-110 transition-smooth">📄</span> <!-- DocumentIcon -->
+                                </div>
+                                <div class="px-2 py-1 rounded-full text-xs font-jetbrains font-medium bg-accent/20 text-accent">+8%</div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="text-3xl font-orbitron font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">2.4M</div>
+                                <div class="text-sm text-muted-foreground font-inter">Files Stored</div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-glow">
+                                <div class="flex items-center gap-2 text-xs text-muted-foreground font-inter">
+                                    <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                                    <span>Live Data</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="p-3 rounded-lg bg-gradient-to-br from-secondary to-accent bg-opacity-20">
+                                    <span class="icon text-primary group-hover:scale-110 transition-smooth">🖥️</span> <!-- ServerIcon -->
+                                </div>
+                                <div class="px-2 py-1 rounded-full text-xs font-jetbrains font-medium bg-accent/20 text-accent">+15%</div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="text-3xl font-orbitron font-bold bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent">847 TB</div>
+                                <div class="text-sm text-muted-foreground font-inter">Total Storage</div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-glow">
+                                <div class="flex items-center gap-2 text-xs text-muted-foreground font-inter">
+                                    <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                                    <span>Live Data</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="p-3 rounded-lg bg-gradient-to-br from-accent to-secondary bg-opacity-20">
+                                    <span class="icon text-primary group-hover:scale-110 transition-smooth">✅</span> <!-- CheckCircleIcon -->
+                                </div>
+                                <div class="px-2 py-1 rounded-full text-xs font-jetbrains font-medium bg-primary/20 text-primary">Stable</div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="text-3xl font-orbitron font-bold bg-gradient-to-r from-accent to-secondary bg-clip-text text-transparent">99.9%</div>
+                                <div class="text-sm text-muted-foreground font-inter">Uptime</div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-glow">
+                                <div class="flex items-center gap-2 text-xs text-muted-foreground font-inter">
+                                    <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                                    <span>Live Data</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Feature Highlights Section -->
+            <section class="px-4">
+                <div class="w-full max-w-6xl mx-auto">
+                    <div class="text-center mb-12">
+                        <h2 class="text-4xl font-orbitron font-bold text-foreground mb-3">Why Choose Qloud?</h2>
+                        <p class="text-lg text-muted-foreground font-inter max-w-2xl mx-auto">Experience the future of cloud storage with features designed for digital freedom</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary bg-opacity-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-smooth">
+                                <span class="icon text-primary">🔑</span> <!-- KeyIcon -->
+                            </div>
+                            <h3 class="text-xl font-orbitron font-bold text-foreground mb-2">Token-Based Access</h3>
+                            <p class="text-muted-foreground font-inter text-sm leading-relaxed">No passwords, no accounts. Just your unique token for instant access to your files.</p>
+                        </div>
+                        <!-- Add other 5 features similarly -->
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-primary bg-opacity-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-smooth">
+                                <span class="icon text-primary">☁️</span> <!-- CloudArrowUpIcon -->
+                            </div>
+                            <h3 class="text-xl font-orbitron font-bold text-foreground mb-2">Instant Upload</h3>
+                            <p class="text-muted-foreground font-inter text-sm leading-relaxed">Drag, drop, and done. Lightning-fast file uploads with real-time progress tracking.</p>
+                        </div>
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-secondary to-accent bg-opacity-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-smooth">
+                                <span class="icon text-primary">🛡️</span> <!-- ShieldCheckIcon -->
+                            </div>
+                            <h3 class="text-xl font-orbitron font-bold text-foreground mb-2">Secure Storage</h3>
+                            <p class="text-muted-foreground font-inter text-sm leading-relaxed">Military-grade encryption keeps your files safe. Your data, your control.</p>
+                        </div>
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-accent bg-opacity-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-smooth">
+                                <span class="icon text-primary">📱</span> <!-- DevicePhoneMobileIcon -->
+                            </div>
+                            <h3 class="text-xl font-orbitron font-bold text-foreground mb-2">Multi-Device Sync</h3>
+                            <p class="text-muted-foreground font-inter text-sm leading-relaxed">Access your files anywhere, anytime. Seamless synchronization across all devices.</p>
+                        </div>
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-secondary bg-opacity-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-smooth">
+                                <span class="icon text-primary">↔️</span> <!-- ArrowsRightLeftIcon -->
+                            </div>
+                            <h3 class="text-xl font-orbitron font-bold text-foreground mb-2">Token Merging</h3>
+                            <p class="text-muted-foreground font-inter text-sm leading-relaxed">Consolidate multiple tokens into one. Unified storage management made simple.</p>
+                        </div>
+                        <div class="bg-card/50 backdrop-blur-xl rounded-xl p-6 border border-glow depth-shadow transition-smooth hover:shadow-glow-primary hover:scale-105 group">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-secondary to-primary bg-opacity-20 flex items-center justify-center mb-4 group-hover:scale-110 transition-smooth">
+                                <span class="icon text-primary">📊</span> <!-- ChartBarIcon -->
+                            </div>
+                            <h3 class="text-xl font-orbitron font-bold text-foreground mb-2">Real-Time Analytics</h3>
+                            <p class="text-muted-foreground font-inter text-sm leading-relaxed">Track your storage usage with live statistics and visual insights.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA Section -->
+            <section class="px-4">
+                <div class="max-w-4xl mx-auto bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/20 backdrop-blur-xl rounded-2xl p-12 border border-glow depth-shadow text-center">
+                    <h2 class="text-4xl font-orbitron font-bold text-foreground mb-4"></h2>
+                    <p>Join thousands of users who have already embraced token-based cloud storage. Your files, your token, your rules.</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button class="px-8 py-4 bg-gradient-to-r from-primary to-secondary rounded-xl font-rajdhani font-semibold text-primary-foreground hover:shadow-glow-primary-strong transition-smooth hover:scale-105 text-lg mt-[-50px] mb-[13px]">Generate Your Token</button>
+                        <button></button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <footer class="mt-24 border-t border-glow bg-card/30 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-4 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center gap-3 mb-4">
+                        <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="glow-primary">
+                            <path d="M20 5L8 15V30L20 35L32 30V15L20 5Z" stroke="url(#gradient)" stroke-width="2" fill="none"/>
+                            <circle cx="20" cy="20" r="4" fill="url(#gradient)"/>
+                            <defs>
+                                <linearGradient id="gradient" x1="8" y1="5" x2="32" y2="35" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#00D4FF"/>
+                                    <stop offset="1" stop-color="#8B5CF6"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <span></span>
+                    </div>
+                    <p class="text-muted-foreground font-inter text-sm max-w-md"></p>
+                </div>
+                <div class="remove">
+                    <h3 class="font-orbitron font-bold text-foreground mb-4">Product</h3>
+                    <ul class="space-y-2 text-sm font-inter">
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Features</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Security</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Pricing</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-orbitron font-bold text-foreground mb-4">Company</h3>
+                    <ul class="space-y-2 text-sm font-inter">
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">About</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Blog</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Careers</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="pt-8 border-t border-glow flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-sm text-muted-foreground font-inter">&copy; 2025 Qloud. All rights reserved.</p>
+                <div class="flex gap-6 text-sm font-inter">
+                    <a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Privacy Policy</a>
+                    <a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Terms of Service</a>
+                    <a href="#" class="text-muted-foreground hover:text-primary transition-smooth">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Cloudinary Config
+        const cloudinaryConfig = {
+            cloud_name: 'dzvz7kzin',
+            upload_preset: 'mycloud_unsigned',
+            folder: 'mycloud'
+        };
+        cl = cloudinary.createUploadWidget({
+            cloudName: cloudinaryConfig.cloud_name,
+            uploadPreset: cloudinaryConfig.upload_preset,
+            folder: cloudinaryConfig.folder,
+            sources: ['local', 'url'],
+            multiple: true,
+            maxFiles: 10,
+            clientAllowedFormats: ['*']
+        }, (error, result) => {
+            if (!error && result && result.event === "success") {
+                console.log('Upload success', result.info);
             }
         });
-    });
-  }
 
-  // File handling
-  uploadBox.addEventListener('dragover', e => {
-    e.preventDefault();
-    uploadBox.classList.add('dragover');
-  });
-
-  uploadBox.addEventListener('dragleave', e => {
-    e.preventDefault();
-    uploadBox.classList.remove('dragover');
-  });
-
-  uploadBox.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadBox.classList.remove('dragover');
-    const droppedFiles = e.dataTransfer.files;
-    if (droppedFiles.length > 0) {
-      uploadFiles(Array.from(droppedFiles));
-    }
-  });
-
-  pickBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', (e) => {
-    uploadFiles(Array.from(e.target.files));
-    e.target.value = null; // Clear input for next upload
-  });
-  
-  syncBtn.addEventListener('click', fetchFiles);
-  zipBtn.addEventListener('click', downloadSelectedAsZip);
-
-  // Cloudinary API calls
-  async function uploadFiles(filesToUpload) {
-    if (filesToUpload.length === 0) return;
-
-    progressContainer.classList.remove('hidden');
-    progressFill.style.width = '0%';
-    statusText.textContent = 'Starting upload...';
-
-    for (let i = 0; i < filesToUpload.length; i++) {
-      const file = filesToUpload[i];
-      statusText.textContent = `Uploading file ${i + 1} of ${filesToUpload.length}: ${file.name}`;
-      const progress = (i / filesToUpload.length) * 100;
-      progressFill.style.width = `${progress}%`;
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', UPLOAD_PRESET);
-      formData.append('folder', UPLOAD_FOLDER);
-      
-      try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
-          method: 'POST',
-          body: formData,
+        // 3D Cloud Mouse Interaction
+        let mousePosition = { x: 0, y: 0 };
+        const cloudContainer = document.getElementById('cloud-container');
+        cloudContainer.addEventListener('mousemove', (e) => {
+            const rect = cloudContainer.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+            const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+            mousePosition = { x, y };
+            document.getElementById('cloud-structure').style.transform = `rotateY(${mousePosition.x * 20}deg) rotateX(${-mousePosition.y * 20}deg)`;
         });
 
-        if (!response.ok) {
-          throw new Error('Upload failed. Check your Cloudinary configuration.');
+        // Token Form
+        const tokenForm = document.getElementById('token-form');
+        const tokenInput = document.getElementById('token-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const submitIcon = document.getElementById('submit-icon');
+        const submitText = document.getElementById('submit-text');
+        const generateBtn = document.getElementById('generate-btn');
+        const tokenError = document.getElementById('token-error');
+
+        tokenForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const token = tokenInput.value.trim();
+            if (!token) {
+                tokenError.textContent = 'Please enter a token';
+                tokenError.classList.remove('hidden');
+                return;
+            }
+            tokenError.classList.add('hidden');
+            submitIcon.textContent = '⏳';
+            submitText.textContent = 'Authenticating...';
+            submitBtn.disabled = true;
+            // Simulate validation
+            setTimeout(() => {
+                localStorage.setItem('qloud_token', token);
+                localStorage.setItem('qloud_token_created', new Date().toISOString());
+                window.location.href = '/upload.html';
+            }, 1500);
+        });
+
+        generateBtn.addEventListener('click', () => {
+            const newToken = `QLT-${Math.random().toString(36).substring(2, 15).toUpperCase()}`;
+            tokenInput.value = newToken;
+            tokenError.classList.add('hidden');
+        });
+
+        // Mobile Menu
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+        function closeMobileMenu() {
+            document.getElementById('mobile-menu').classList.add('hidden');
         }
 
-        const data = await response.json();
-        files.unshift(data);
-        renderFiles();
-      } catch (error) {
-        showMessage(`Upload failed for ${file.name}: ${error.message}`, 'error');
-        console.error('Upload Error:', error);
-      }
-    }
-
-    progressFill.style.width = '100%';
-    statusText.textContent = 'All files uploaded successfully!';
-    setTimeout(() => {
-      progressContainer.classList.add('hidden');
-    }, 1000);
-    showMessage('All files uploaded successfully!', 'success');
-    fetchFiles();
-  }
-
-  async function fetchFiles() {
-    progressContainer.classList.remove('hidden');
-    progressFill.style.width = '25%';
-    statusText.textContent = 'Fetching files from Cloudinary...';
-    try {
-      // Call Vercel API Route for listing files
-      const response = await fetch('/api/list-files'); 
-      
-      if (!response.ok) {
-        const errorText = await response.text(); 
-        throw new Error(`Failed to fetch file list from Vercel API. Status: ${response.status}. Message: ${errorText}`);
-      }
-      
-      const resources = await response.json();
-      files = resources.resources.map(file => {
-          const filename = file.public_id.split('/').pop();
-          return { ...file, filename: filename };
-      });
-      renderFiles();
-      showMessage('File list refreshed!', 'success');
-    } catch (error) {
-      showMessage(`Could not fetch file list: ${error.message}`, 'error');
-      console.error('Fetch Error:', error);
-    } finally {
-      progressFill.style.width = '100%';
-      setTimeout(() => {
-        progressContainer.classList.add('hidden');
-      }, 1000);
-    }
-  }
-
-  async function deleteFile(publicId) {
-      progressContainer.classList.remove('hidden');
-      progressFill.style.width = '25%';
-      statusText.textContent = `Deleting ${publicId.split('/').pop()}...`;
-      try {
-          // Call Vercel API Route for deleting files
-          const response = await fetch('/api/delete-file', {
-              method: 'POST', // Use POST for deletion as it sends data in the body
-              headers: {
-                  'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ public_id: publicId })
-          });
-
-          if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error.message || 'Deletion failed.');
-          }
-
-          showMessage(`File deleted successfully.`, 'success');
-          // Remove file from local list and re-render
-          files = files.filter(f => f.public_id !== publicId);
-          renderFiles();
-      } catch (error) {
-          showMessage(`Deletion failed: ${error.message}`, 'error');
-          console.error('Deletion Error:', error);
-      } finally {
-          progressFill.style.width = '100%';
-          setTimeout(() => {
-              progressContainer.classList.add('hidden');
-          }, 1000);
-      }
-  }
-
-  // Custom confirmation modal (replaces alert/confirm)
-  function showCustomConfirm(message) {
-      return new Promise(resolve => {
-          const modal = document.createElement('div');
-          modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
-          modal.innerHTML = `
-              <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-                  <p class="text-gray-800 text-lg font-semibold mb-4">${message}</p>
-                  <div class="flex justify-end space-x-4">
-                      <button id="cancelConfirm" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors">Cancel</button>
-                      <button id="okConfirm" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">Delete</button>
-                  </div>
-              </div>
-          `;
-          document.body.appendChild(modal);
-
-          document.getElementById('okConfirm').addEventListener('click', () => {
-              document.body.removeChild(modal);
-              resolve(true);
-          });
-          document.getElementById('cancelConfirm').addEventListener('click', () => {
-              document.body.removeChild(modal);
-              resolve(false);
-          });
-      });
-  }
-
-
-  // Initialize
-  document.addEventListener('DOMContentLoaded', () => {
-    fetchFiles();
-  });
-</script>
+        // Mock Storage Update - In real, fetch from backend
+        function updateStorage() {
+            const used = 2.4;
+            const total = 10;
+            const percentage = (used / total) * 100;
+            document.getElementById('storage-fill').style.width = `${percentage}%`;
+            document.getElementById('storage-percentage').textContent = `${Math.round(percentage)}%`;
+            document.getElementById('used-size').textContent = `${used.toFixed(1)} GB`;
+            document.getElementById('available-size').textContent = `${(total - used).toFixed(1)} GB remaining`;
+        }
+        updateStorage();
+    </script>
 </body>
 </html>
