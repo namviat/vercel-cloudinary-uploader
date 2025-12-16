@@ -4,371 +4,224 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Qloud — Upload</title>
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
 <style>
-  body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
-  .file-item.selected{border:2px solid rgba(59,130,246,1);box-shadow:0 0 10px rgba(59,130,246,0.25);}
+  body {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  }
+  .file-item.selected {
+    border: 2px solid rgba(59,130,246,1);
+    box-shadow: 0 0 10px rgba(59,130,246,.35);
+  }
 </style>
 </head>
+
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
-  <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-    <div class="lg:col-span-1 glass p-4 rounded-lg">
-      <div class="flex items-center gap-3">
-        <div id="avatarPreview" class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-xl">U</div>
-        <div>
-          <div id="profileName" class="font-semibold">Profile</div>
-          <div class="text-xs opacity-70" id="profileToken">token: —</div>
-        </div>
-      </div>
 
-      <div class="mt-4">
-        <label class="text-xs opacity-70">Display name</label>
-        <input id="profileNameInput" class="w-full mt-1 p-2 rounded bg-transparent border border-white/6" placeholder="Your name (optional)"/>
-        <label class="text-xs opacity-70 mt-3 block">Avatar URL</label>
-        <input id="avatarInput" class="w-full mt-1 p-2 rounded bg-transparent border border-white/6" placeholder="https://... (optional)"/>
-        <button id="saveProfile" class="mt-3 w-full py-2 rounded bg-gradient-to-r from-blue-500 to-cyan-400 text-slate-900 font-semibold">Save</button>
-      </div>
+<div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-      <div class="mt-6">
-        <div class="flex items-center justify-between">
-          <div class="text-sm opacity-80">Actions</div>
-          <div class="relative inline-block">
-            <button id="dotsBtn" class="px-2 py-1 rounded dot-menu">⋯</button>
-            <div id="dotsMenu" class="absolute right-0 mt-2 w-48 bg-slate-800 border border-white/6 rounded shadow-lg hidden">
-              <button id="mergeTokensBtn" class="w-full text-left px-4 py-2 hover:bg-white/2">Token merge</button>
-              <button id="deleteTokenBtn" class="w-full text-left px-4 py-2 hover:bg-white/2">Delete token (and data)</button>
-              <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-white/2">Log out</button>
-            </div>
-          </div>
-        </div>
-        <div class="text-xs opacity-60 mt-2">Token merge will move files into a destination token via a server-side process.</div>
-      </div>
-    </div>
+<!-- SIDEBAR -->
+<div class="lg:col-span-1 bg-white/5 backdrop-blur p-4 rounded-xl">
 
-    <!-- main uploader area -->
-    <div class="lg:col-span-3 glass p-6 rounded-lg">
-      <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
-
-      <div id="uploadBox" class="border-2 border-dashed border-indigo-500 rounded-xl p-6 text-center cursor-pointer bg-indigo-900/10 hover:bg-indigo-900/8 transition">
-        <div class="text-5xl">📁</div>
-        <div class="font-bold mt-2">Drag & Drop files here or click to upload</div>
-        <div class="text-sm opacity-70 mt-1">Files will be stored in the Cloudinary folder for this token.</div>
-
-        <div class="flex items-center justify-center gap-4 mt-4">
-          <input id="fileInput" type="file" multiple class="hidden">
-          <button id="pickBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-full">Choose files</button>
-          <button id="syncBtn" class="bg-white/6 hover:bg-white/10 text-white font-semibold py-2 px-4 rounded-full">Refresh</button>
-        </div>
-      </div>
-
-      <div class="progress-container hidden mt-4">
-        <div class="w-full bg-white/6 rounded-full h-2.5">
-          <div id="progressFill" class="h-2.5 rounded-full" style="width:0%; background:linear-gradient(90deg,#4facfe,#00f2fe)"></div>
-        </div>
-        <div id="statusText" class="text-sm mt-1 opacity-70"></div>
-      </div>
-
-      <div class="mt-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold">Files <span id="count" class="text-sm opacity-70 ml-2"></span></h2>
-          <div class="flex items-center gap-2">
-            <button id="zipBtn" class="bg-emerald-500 px-3 py-1 rounded disabled:opacity-50" disabled>Download Selected ZIP</button>
-            <button id="selectAllBtn" class="bg-white/6 px-3 py-1 rounded">Select all</button>
-          </div>
-        </div>
-
-        <div id="file-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-          <div class="col-span-full text-center p-8 opacity-60">No files yet — upload one to get started.</div>
-        </div>
-      </div>
+  <div class="flex items-center gap-3">
+    <div id="avatarPreview" class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-xl">U</div>
+    <div>
+      <div id="profileName" class="font-semibold">Profile</div>
+      <div id="profileToken" class="text-xs opacity-70"></div>
     </div>
   </div>
 
+  <div class="mt-4">
+    <label class="text-xs opacity-70">Display name</label>
+    <input id="profileNameInput" class="w-full mt-1 p-2 rounded bg-transparent border border-white/10" />
+    <label class="text-xs opacity-70 mt-3 block">Avatar URL</label>
+    <input id="avatarInput" class="w-full mt-1 p-2 rounded bg-transparent border border-white/10" />
+    <button id="saveProfile" class="mt-3 w-full py-2 rounded bg-gradient-to-r from-blue-500 to-cyan-400 text-slate-900 font-semibold">
+      Save
+    </button>
+  </div>
+
+  <div class="mt-6">
+    <button id="logoutBtn" class="w-full py-2 rounded bg-white/5 hover:bg-white/10">
+      Log out
+    </button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="lg:col-span-3 bg-white/5 backdrop-blur p-6 rounded-xl">
+
+  <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
+
+  <!-- UPLOAD -->
+  <div id="uploadBox" class="border-2 border-dashed border-indigo-500 rounded-xl p-6 text-center cursor-pointer bg-indigo-900/10 hover:bg-indigo-900/20">
+    <div class="text-5xl">📁</div>
+    <div class="font-bold mt-2">Drag & drop or click to upload</div>
+    <div class="text-sm opacity-70">Files are private to this token</div>
+
+    <div class="flex justify-center gap-4 mt-4">
+      <input id="fileInput" type="file" multiple hidden />
+      <button id="pickBtn" class="bg-indigo-500 px-4 py-2 rounded-full font-semibold">Choose files</button>
+      <button id="syncBtn" class="bg-white/10 px-4 py-2 rounded-full">Refresh</button>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="progressWrap" class="hidden mt-4">
+    <div class="w-full bg-white/10 rounded-full h-2">
+      <div id="progressFill" class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+    </div>
+    <div id="statusText" class="text-xs opacity-70 mt-1"></div>
+  </div>
+
+  <!-- FILES -->
+  <div class="mt-6">
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="font-bold">Files <span id="count" class="text-sm opacity-70"></span></h2>
+      <button id="zipBtn" class="bg-emerald-500 px-3 py-1 rounded disabled:opacity-40" disabled>
+        Download ZIP
+      </button>
+    </div>
+
+    <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+  </div>
+
+</div>
+</div>
+
 <script>
-/* CLOUDINARY (public scoping) */
+/* =========================
+   CONFIG
+========================= */
 const CLOUD_NAME = 'dzvz7kzin';
 const UPLOAD_PRESET = 'mycloud_unsigned';
-const UPLOAD_FOLDER_BASE = 'mycloud'; // we'll append /<token>
+const BASE_FOLDER = 'mycloud';
 
-/* UI references */
-const urlToken = new URLSearchParams(window.location.search).get('token') || '';
-const profileNameEl = document.getElementById('profileName');
-const profileTokenEl = document.getElementById('profileToken');
-const avatarPreview = document.getElementById('avatarPreview');
-const profileNameInput = document.getElementById('profileNameInput');
-const avatarInput = document.getElementById('avatarInput');
-const saveProfileBtn = document.getElementById('saveProfile');
+const token = new URLSearchParams(location.search).get('token');
+if (!token) location.href = 'index.html';
 
-const uploadBox = document.getElementById('uploadBox');
-const pickBtn = document.getElementById('pickBtn');
-const fileInput = document.getElementById('fileInput');
-const syncBtn = document.getElementById('syncBtn');
-const zipBtn = document.getElementById('zipBtn');
-const fileGrid = document.getElementById('file-grid');
+document.getElementById('profileToken').textContent = 'token: ' + token;
+
+/* =========================
+   UI HELPERS
+========================= */
+const fileGrid = document.getElementById('fileGrid');
 const countEl = document.getElementById('count');
 const msgEl = document.getElementById('msg');
-const progressContainer = document.querySelector('.progress-container');
+const progressWrap = document.getElementById('progressWrap');
 const progressFill = document.getElementById('progressFill');
 const statusText = document.getElementById('statusText');
+const zipBtn = document.getElementById('zipBtn');
 
 let files = [];
-let selectedFiles = new Set();
+let selected = new Set();
 
-function showMessage(text, type='info'){
-  msgEl.textContent = text;
-  msgEl.className = '';
-  msgEl.classList.add('p-3','rounded','mb-4','text-sm');
-  if(type==='success') msgEl.classList.add('bg-emerald-600/20','text-emerald-300');
-  else if(type==='error') msgEl.classList.add('bg-red-600/20','text-red-300');
-  else msgEl.classList.add('bg-white/6','text-white');
+function showMsg(t, type='info'){
+  msgEl.textContent = t;
+  msgEl.className = 'p-3 rounded mb-4 text-sm ' +
+    (type==='success' ? 'bg-emerald-500/20 text-emerald-300' :
+     type==='error' ? 'bg-red-500/20 text-red-300' :
+     'bg-white/10');
   msgEl.classList.remove('hidden');
-  setTimeout(()=>msgEl.classList.add('hidden'),4000);
+  setTimeout(()=>msgEl.classList.add('hidden'), 3500);
 }
 
-/* Profile stored per token in localStorage */
-const token = urlToken || (localStorage.getItem('last_token') || '');
-if(!token){ alert('No token provided. Go back to homepage and create or paste a token.'); window.location.href='index.html'; }
-localStorage.setItem('last_token', token);
-profileTokenEl.textContent = 'token: ' + token;
-
-function loadProfile(){
-  const p = JSON.parse(localStorage.getItem('qloud_profile_' + token) || '{}');
-  profileNameInput.value = p.name || '';
-  avatarInput.value = p.avatar || '';
-  profileNameEl.textContent = p.name || 'Profile';
-  if(p.avatar) avatarPreview.style.backgroundImage = `url(${p.avatar})`, avatarPreview.textContent='';
-  else avatarPreview.textContent = (p.name? p.name[0].toUpperCase() : 'U'), avatarPreview.style.backgroundImage='';
-}
-saveProfileBtn.addEventListener('click', ()=>{
-  const p = { name: profileNameInput.value.trim(), avatar: avatarInput.value.trim() };
-  localStorage.setItem('qloud_profile_' + token, JSON.stringify(p));
-  loadProfile();
-  showMessage('Profile saved', 'success');
-});
-loadProfile();
-
-/* Render file list */
-function fmtBytes(n){
-  if(!n) return '0 B'; const units=['B','KB','MB','GB','TB']; let i=0;
-  while(n>=1024 && i<units.length-1){ n/=1024; i++; } return n.toFixed(2)+' '+units[i];
-}
-function iconForMime(t){
-  if(!t) return '📄';
-  if(t.startsWith('image/')) return '🖼️';
-  if(t.startsWith('video/')) return '🎥';
-  if(t.includes('pdf')) return '📄';
-  if(t.includes('zip') || t.includes('archive')) return '📦';
-  if(t.startsWith('text/')) return '📃';
-  return '📄';
-}
-function renderFiles(){
-  countEl.textContent = `(${files.length} files)`;
-  if(files.length===0){ fileGrid.innerHTML = '<div class="col-span-full text-center p-8 opacity-60">No files yet — upload one to get started.</div>'; zipBtn.disabled=true; return; }
-  fileGrid.innerHTML = files.map(f=>{
-    const icon = iconForMime(f.format||'');
-    const size = f.bytes? fmtBytes(f.bytes) : '';
-    const date = f.created_at ? new Date(f.created_at).toLocaleString() : '';
-    const isSel = selectedFiles.has(f.public_id);
-    const selClass = isSel ? 'selected' : '';
-    return `
-      <div data-public-id="${f.public_id}" class="file-item relative block p-4 bg-white/3 rounded-lg shadow-sm hover:shadow-lg transition ${selClass}">
-        <a href="${f.secure_url}" target="_blank" class="block w-full h-full p-4 absolute top-0 left-0"></a>
-        <div class="flex items-center space-x-4 pointer-events-none">
-          <div class="text-3xl">${icon}</div>
-          <div class="min-w-0 flex-1">
-            <div class="font-bold text-white truncate">${f.filename || f.public_id.split('/').pop()}</div>
-            <div class="text-sm opacity-70">${size}</div>
-            <div class="text-xs opacity-50 mt-1">${date}</div>
-          </div>
-        </div>
-        <button class="delete-btn absolute top-2 right-2 p-1 text-red-300 bg-white/5 rounded-full" data-public-id="${f.public_id}">
-          ✕
-        </button>
-      </div>
-    `;
-  }).join('');
-  zipBtn.disabled = selectedFiles.size === 0;
-
-  // add events
-  fileGrid.querySelectorAll('.file-item').forEach(item=>{
-    item.addEventListener('click', (e)=>{
-      const pid = item.dataset.publicId;
-      if(e.target.classList.contains('delete-btn')) return; // handled separately
-      if(selectedFiles.has(pid)) selectedFiles.delete(pid); else selectedFiles.add(pid);
-      renderFiles();
-    });
-  });
-  fileGrid.querySelectorAll('.delete-btn').forEach(btn=>{
-    btn.addEventListener('click', async (e)=>{
-      e.stopPropagation();
-      const pid = btn.dataset.publicId;
-      if(!confirm('Delete file permanently?')) return;
-      await deleteFile(pid);
-    });
-  });
-}
-
-/* File upload logic */
-uploadBox.addEventListener('dragover', e=>{ e.preventDefault(); uploadBox.classList.add('border-dashed'); });
-uploadBox.addEventListener('dragleave', e=>{ uploadBox.classList.remove('border-dashed'); });
-uploadBox.addEventListener('drop', e=>{ e.preventDefault(); uploadFiles(Array.from(e.dataTransfer.files)); });
-
-pickBtn.addEventListener('click', ()=>fileInput.click());
-fileInput.addEventListener('change', e=>{ uploadFiles(Array.from(e.target.files)); e.target.value = null; });
-syncBtn.addEventListener('click', fetchFiles);
-
-async function uploadFiles(fileList){
-  if(fileList.length===0) return;
-  progressContainer.classList.remove('hidden'); progressFill.style.width='0%';
-  for(let i=0;i<fileList.length;i++){
-    const file = fileList[i];
-    statusText.textContent = `Uploading ${i+1}/${fileList.length}: ${file.name}`;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('upload_preset', UPLOAD_PRESET);
-    fd.append('folder', `${UPLOAD_FOLDER_BASE}/${token}`); // token-specific folder
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method:'POST', body:fd });
-      if(!res.ok) throw new Error('upload failed');
-      const data = await res.json();
-      files.unshift(data);
-      renderFiles();
-    } catch (err){
-      showMessage('Upload failed: '+err.message,'error');
-      console.error(err);
-    }
-    progressFill.style.width = Math.round(((i+1)/fileList.length)*100) + '%';
+/* =========================
+   LIST FILES (TOKEN ONLY)
+========================= */
+async function fetchFiles(){
+  try {
+    const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
+    const data = await res.json();
+    files = data.resources || [];
+    renderFiles();
+  } catch {
+    showMsg('Failed to load files', 'error');
   }
-  statusText.textContent = 'Upload complete';
-  setTimeout(()=> progressContainer.classList.add('hidden'), 800);
-  showMessage('Upload complete','success');
+}
+
+function renderFiles(){
+  countEl.textContent = `(${files.length})`;
+  fileGrid.innerHTML = '';
+
+  if (!files.length) {
+    fileGrid.innerHTML = '<div class="col-span-full text-center opacity-60">No files yet</div>';
+    zipBtn.disabled = true;
+    return;
+  }
+
+  files.forEach(f => {
+    const el = document.createElement('div');
+    el.className = 'file-item p-4 bg-white/10 rounded cursor-pointer';
+    el.dataset.id = f.public_id;
+    el.innerHTML = `
+      <div class="font-semibold truncate">${f.public_id.split('/').pop()}</div>
+      <div class="text-xs opacity-60">${(f.bytes/1024/1024).toFixed(2)} MB</div>
+    `;
+    el.onclick = () => {
+      selected.has(f.public_id) ? selected.delete(f.public_id) : selected.add(f.public_id);
+      el.classList.toggle('selected');
+      zipBtn.disabled = selected.size === 0;
+    };
+    fileGrid.appendChild(el);
+  });
+}
+
+/* =========================
+   UPLOAD
+========================= */
+document.getElementById('pickBtn').onclick = () =>
+  document.getElementById('fileInput').click();
+
+document.getElementById('fileInput').onchange = e =>
+  uploadFiles([...e.target.files]);
+
+async function uploadFiles(list){
+  progressWrap.classList.remove('hidden');
+  for (let i=0;i<list.length;i++){
+    const fd = new FormData();
+    fd.append('file', list[i]);
+    fd.append('upload_preset', UPLOAD_PRESET);
+    fd.append('folder', `${BASE_FOLDER}/${token}`);
+
+    statusText.textContent = `Uploading ${list[i].name}`;
+    progressFill.style.width = ((i+1)/list.length*100)+'%';
+
+    await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
+      method:'POST',
+      body:fd
+    });
+  }
+  progressWrap.classList.add('hidden');
+  showMsg('Upload complete','success');
   fetchFiles();
 }
 
-/* fetch files — requires a server route to return Cloudinary resource list for folder
-   Example Vercel function: /api/list-files?folder=mycloud/<token>
-   Fallback: show stored files persisted in localStorage for demo only
-*/
-async function fetchFiles(){
-  progressContainer.classList.remove('hidden'); progressFill.style.width='20%';
-  try{
-    const resp = await fetch(`/api/list-files?folder=${encodeURIComponent(UPLOAD_FOLDER_BASE+'/'+token)}`);
-    if(!resp.ok) throw new Error('no-server');
-    const data = await resp.json();
-    files = data.resources.map(r=>{
-      r.filename = r.public_id.split('/').pop();
-      return r;
-    });
-    renderFiles();
-    showMessage('File list updated','success');
-  }catch(e){
-    // fallback: try localStorage demo list
-    const demo = JSON.parse(localStorage.getItem('qloud_demo_files_'+token) || '[]');
-    files = demo;
-    renderFiles();
-    showMessage('Using local demo file list. Add a /api/list-files server function to use real Cloudinary data','info');
-  } finally {
-    progressFill.style.width='100%';
-    setTimeout(()=> progressContainer.classList.add('hidden'),700);
-  }
-}
-
-/* delete file — requires a server function to delete via API secret */
-async function deleteFile(publicId){
-  try {
-    // Call serverless delete endpoint which has Cloudinary API_SECRET
-    const resp = await fetch('/api/delete-file', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ public_id: publicId })
-    });
-    if(!resp.ok) throw new Error('server delete failed');
-    // update local state
-    files = files.filter(f=>f.public_id !== publicId);
-    renderFiles();
-    showMessage('Deleted','success');
-  } catch(err){
-    // fallback demo delete
-    files = files.filter(f=>f.public_id !== publicId);
-    renderFiles();
-    showMessage('Deleted locally (demo) — implement /api/delete-file for real deletion','info');
-  }
-}
-
-/* ZIP download for selected items (client-only: will fetch each file and zip) */
-document.getElementById('zipBtn').addEventListener('click', downloadSelectedAsZip);
-async function downloadSelectedAsZip(){
-  if(selectedFiles.size===0) return;
-  const selected = files.filter(f=>selectedFiles.has(f.public_id));
+/* =========================
+   ZIP DOWNLOAD
+========================= */
+zipBtn.onclick = async () => {
   const zip = new JSZip();
-  statusText.textContent = 'Fetching and zipping files...';
-  progressContainer.classList.remove('hidden'); progressFill.style.width='10%';
-  let i=0;
-  for(const f of selected){
-    try{
-      const r = await fetch(f.secure_url);
-      const blob = await r.blob();
-      const name = f.filename || f.public_id.split('/').pop();
-      zip.file(name, blob);
-    }catch(e){
-      console.error('fetch file for zip failed', e);
-    }
-    i++; progressFill.style.width = Math.round((i/selected.length)*90)+'%';
+  for (const f of files.filter(x=>selected.has(x.public_id))){
+    const r = await fetch(f.secure_url);
+    zip.file(f.public_id.split('/').pop(), await r.blob());
   }
-  const content = await zip.generateAsync({type:'blob'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = `qloud-${token}.zip`; a.click();
-  progressFill.style.width='100%'; setTimeout(()=>progressContainer.classList.add('hidden'),700);
-  showMessage('ZIP ready','success');
-}
+  const blob = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `qloud-${token}.zip`;
+  a.click();
+};
 
-/* dots menu: merge tokens / delete token / logout
-   these call server endpoints you need to implement; we show UI + confirm flows.
-*/
-const dotsBtn = document.getElementById('dotsBtn');
-const dotsMenu = document.getElementById('dotsMenu');
-dotsBtn.addEventListener('click', ()=> dotsMenu.classList.toggle('hidden'));
-
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  window.location.href = 'index.html';
-});
-
-document.getElementById('deleteTokenBtn').addEventListener('click', async ()=>{
-  if(!confirm('Delete this token and all its data? This will permanently remove files (server-side)!')) return;
-  try {
-    const res = await fetch('/api/delete-token', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ token }) });
-    if(!res.ok) throw new Error('server error');
-    showMessage('Token and data deleted (server)', 'success');
-    // remove local data and redirect
-    localStorage.removeItem('qloud_profile_'+token);
-    window.location.href = 'index.html';
-  } catch(e){
-    // fallback
-    localStorage.removeItem('qloud_profile_'+token);
-    showMessage('Token deleted locally (demo). Implement /api/delete-token for real deletion','info');
-    window.location.href='index.html';
-  }
-});
-
-document.getElementById('mergeTokensBtn').addEventListener('click', async ()=>{
-  const dest = prompt('Destination token (this token is prefilled):', token) || token;
-  const sourcesRaw = prompt('Comma-separated source tokens to merge from (example: abc,def):','');
-  if(!sourcesRaw) return;
-  const sources = sourcesRaw.split(',').map(s=>s.trim()).filter(Boolean);
-  if(!confirm(`Merge ${sources.length} tokens into ${dest}?`)) return;
-  // call server endpoint which does transfer + deletes source tokens
-  try {
-    const res = await fetch('/api/merge-tokens', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ destination: dest, sources }) });
-    if(!res.ok) throw new Error('merge failed');
-    alert('Merge queued/completed (server).');
-    fetchFiles();
-  } catch(e){
-    alert('Server merge not available in demo. Implement /api/merge-tokens on Vercel.');
-  }
-});
-
-/* init */
+/* =========================
+   INIT
+========================= */
 fetchFiles();
-
+document.getElementById('logoutBtn').onclick = () => location.href = 'index.html';
 </script>
+
 </body>
 </html>
