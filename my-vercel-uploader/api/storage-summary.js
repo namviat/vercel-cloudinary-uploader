@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
   const UPLOAD_FOLDER = process.env.CLOUDINARY_UPLOAD_FOLDER || 'mycloud';
 
   const BASE_FOLDER = 'mycloud';
-  const STORAGE_LIMIT_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
+  const STORAGE_LIMIT_BYTES = 25 * 1024 * 1024 * 1024; // 2GB
 
   cloudinary.config({
     cloud_name: CLOUD_NAME,
