@@ -8,7 +8,6 @@ module.exports = async (req, res) => {
   const API_SECRET = process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk';
   const UPLOAD_FOLDER = process.env.CLOUDINARY_UPLOAD_FOLDER || 'mycloud';
   const BASE_FOLDER = 'mycloud';
-
   const token = req.query.token;
 
   if (!token) {
@@ -23,20 +22,18 @@ module.exports = async (req, res) => {
 
   try {
     const result = await cloudinary.search
-      .expression(`folder:${BASE_FOLDER}/${token}`)
+      .expression(`folder=${BASE_FOLDER}/${token}`)
       .sort_by('created_at', 'desc')
       .max_results(100)
       .execute();
 
-    res.status(200).json({
+    return res.status(200).json({
       token,
-      resources: result.resources
+      resources: result.resources || []
     });
 
   } catch (error) {
     console.error('Cloudinary list error:', error);
-    res.status(500).json({ error: 'Failed to fetch files from Cloudinary.' });
+    return res.status(500).json({ error: 'Failed to fetch files' });
   }
 };
-};
-
