@@ -1,889 +1,261 @@
-// Qloud — Single-file React App (Homepage + Upload Dashboard)
-// Drop into a React/Next.js page. Requires:
-//  - Firebase config injected as window.__firebase_config (or process.env in Next.js).
-//  - Vercel serverless endpoints described below for secure Cloudinary Admin API calls.
-
-import React, { useEffect, useState, useRef, useCallback } from "react";
-
-/* ---------------------------
-  External libs used (install)
-  npm i firebase lucide-react
----------------------------- */
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  signInAnonymously,
-  signInWithCustomToken,
-  onAuthStateChanged,
-} from "firebase/auth";
-import {
-  getFirestore,
-  collection,
-  doc,
-  setDoc,
-  onSnapshot,
-  serverTimestamp,
-  deleteDoc,
-  query,
-  orderBy,
-} from "firebase/firestore";
-
-import {
-  CloudUpload,
-  Database,
-  ArrowLeft,
-  ArrowDown,
-  X,
-  Folder,
-  ArrowPath,
-  Key,
-} from "lucide-react";
-
-/* ===================== Configuration (client-safe) ===================== */
-const env = (k, d) =>
-  (typeof process !== "undefined" && process.env?.[k]) ||
-  (typeof window !== "undefined" && window.__ENV__?.[k]) ||
-  d;
-
-const CLOUD_NAME = env("NEXT_PUBLIC_CLOUD_NAME", "dzvz7kzin");
-const UPLOAD_PRESET = env("NEXT_PUBLIC_UPLOAD_PRESET", "mycloud_unsigned");
-const UPLOAD_FOLDER = env("NEXT_PUBLIC_UPLOAD_FOLDER", "mycloud");
-
-/* Firebase vars injected into window or process; keep as you had them */
-const firebaseConfig =
-  (typeof window !== "undefined" && window.__firebase_config
-    ? JSON.parse(window.__firebase_config)
-    : {}) || {};
-const initialAuthToken =
-  (typeof window !== "undefined" && window.__initial_auth_token) || undefined;
-
-/* -------------------- Small helpers -------------------- */
-const formatBytes = (bytes) => {
-  if (!bytes && bytes !== 0) return "—";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0;
-  let n = Number(bytes);
-  while (n >= 1024 && i < units.length - 1) {
-    n /= 1024;
-    i++;
-  }
-  return `${n.toFixed(2)} ${units[i]}`;
-};
-
-/* Unified cyber theme styles (kept inline for single-file) */
-const theme = {
-  bg: "#05060b",
-  card: "rgba(20,20,28,0.7)",
-  borderGlow: "rgba(56,189,248,0.12)",
-  primaryGradient:
-    "linear-gradient(135deg, rgba(56,189,248,1), rgba(99,102,241,1))",
-  accentGradient:
-    "linear-gradient(135deg, rgba(255,140,0,1), rgba(99,102,241,0.9))",
-  text: "#e6eef9",
-  muted: "#9aa4b2",
-  radius: 14,
-};
-
-/* -------------------- HOME PAGE -------------------- */
-function Home({ onEnterToken }) {
-  const [token, setToken] = useState("");
-  const [stats, setStats] = useState(null);
-  const [loadingStats, setLoadingStats] = useState(false);
-  const [errorStats, setErrorStats] = useState(null);
-
-  useEffect(() => {
-    // fetch real metadata from serverless endpoint
-    const load = async () => {
-      setLoadingStats(true);
-      try {
-        const res = await fetch("/api/cloudinary-stats");
-        if (!res.ok) throw new Error("stats fetch failed");
-        const json = await res.json();
-        // expected shape: { used_bytes, quota_bytes, total_assets, tokens_count }
-        setStats(json);
-      } catch (err) {
-        console.error("Cloudinary stats error:", err);
-        setErrorStats(err.message || "Failed to load stats");
-        setStats(null);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-    load();
-  }, []);
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: `radial-gradient(1200px 600px at 20% 10%, rgba(56,189,248,0.06), transparent), linear-gradient(180deg, ${theme.bg}, #02030a)`,
-        color: theme.text,
-        paddingBottom: 60,
-      }}
-    >
-      <header
-        style={{
-          height: 72,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 20px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: theme.primaryGradient,
-              boxShadow: `0 6px 30px ${theme.borderGlow}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CloudUpload color="#020617" />
-          </div>
-          <div style={{ fontWeight: 800, fontFamily: "Orbitron, sans-serif" }}>
-            Qloud
-          </div>
-        </div>
-
-        {/* Removed nav links per request */}
-        <div />
-      </header>
-
-      <main style={{ maxWidth: 1200, margin: "36px auto", padding: "0 20px" }}>
-        {/* Hero / 3D-like CSS cloud (non-build-dependent) */}
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 420px",
-            gap: 28,
-            alignItems: "center",
-            marginBottom: 28,
-          }}
-        >
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Qloud — Home</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Three.js for the 3D cloud -->
+<script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+<!-- Simplex noise for subtle cloud motion -->
+<script src="https://unpkg.com/simplex-noise@2.4.0/simplex-noise.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+  .canvas-wrap{height:380px; border-radius:16px; overflow:hidden; background:linear-gradient(180deg,#0f172a,#071028);}
+  .glass{backdrop-filter: blur(6px); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius:12px;}
+  .meter {height: 18px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow:hidden;}
+  .meter > span {display:block; height:100%; border-radius:999px; transition: width .6s ease;}
+  .dot-menu {width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+</style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-6">
+  <div class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left: 3D Cloud + info -->
+    <div class="glass p-6 canvas-wrap relative">
+      <div id="three-container" style="position:absolute;inset:0;"></div>
+      <div class="absolute left-6 top-6">
+        <h1 class="text-2xl font-bold">Qloud</h1>
+        <p class="text-sm opacity-80">Store files. Share with a token. Access from anywhere.</p>
+      </div>
+      <div class="absolute left-6 bottom-6 w-[calc(100%-3rem)] grid grid-cols-1 gap-3">
+        <div class="flex items-center justify-between">
           <div>
-            <h1
-              style={{
-                fontSize: 48,
-                margin: 0,
-                fontFamily: "Orbitron, sans-serif",
-                letterSpacing: -1,
-                fontWeight: 900,
-                background:
-                  "linear-gradient(90deg, #CFFAFE, #C4B5FD 40%, #FFD8A8 80%)",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              Token-based Cloud Storage
-            </h1>
-            <p style={{ color: theme.muted, marginTop: 12, maxWidth: 680 }}>
-              Use your token as your single key — no password, no accounts. Upload
-              files from anywhere and access them anywhere.
-            </p>
-
-            <div
-              style={{
-                marginTop: 22,
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-                maxWidth: 680,
-              }}
-            >
-              <input
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Enter token (e.g. QLT-ABC123...)"
-                style={{
-                  flex: 1,
-                  padding: "14px 16px",
-                  borderRadius: theme.radius,
-                  background: theme.card,
-                  border: `1px solid ${theme.borderGlow}`,
-                  color: theme.text,
-                }}
-              />
-              <button
-                onClick={() => onEnterToken(token)}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: theme.primaryGradient,
-                  color: "#020617",
-                  fontWeight: 700,
-                }}
-              >
-                Access Storage
-              </button>
-            </div>
+            <div class="text-xs opacity-80">Global storage used</div>
+            <div class="text-sm font-semibold">Shared backend pool</div>
           </div>
-
-          {/* 3D-ish visual made with CSS shapes (no three.js) */}
-          <div
-            aria-hidden
-            style={{
-              width: 420,
-              height: 320,
-              borderRadius: 20,
-              background:
-                "radial-gradient(closest-side at 30% 30%, rgba(56,189,248,0.12), transparent), rgba(10,10,14,0.6)",
-              border: `1px solid ${theme.borderGlow}`,
-              boxShadow: `0 30px 80px rgba(0,0,0,0.6)`,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "50%",
-                width: 220,
-                height: 220,
-                marginLeft: -110,
-                marginTop: -110,
-                background:
-                  "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.06), rgba(99,102,241,0.15) 30%, rgba(56,189,248,0.08) 60%)",
-                borderRadius: 200,
-                filter: "blur(8px)",
-                transform: "scale(1.02)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "50%",
-                marginLeft: -60,
-                marginTop: -60,
-                width: 120,
-                height: 120,
-                borderRadius: "50%",
-                background:
-                  "linear-gradient(135deg, rgba(99,102,241,0.9), rgba(56,189,248,0.9))",
-                boxShadow: `0 12px 60px ${theme.borderGlow}`,
-              }}
-            />
-          </div>
-        </section>
-
-        {/* Realtime storage meters (use Cloudinary via /api/cloudinary-stats) */}
-        <section style={{ display: "grid", gap: 16 }}>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <div
-              style={{
-                flex: "1 1 280px",
-                padding: 18,
-                borderRadius: theme.radius,
-                background: theme.card,
-                border: `1px solid ${theme.borderGlow}`,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Database color="#9ee9ff" />
-                <div>
-                  <div style={{ color: theme.muted, fontSize: 13 }}>
-                    Total Storage Used
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: 20 }}>
-                    {loadingStats ? (
-                      "Loading…"
-                    ) : stats ? (
-                      `${(stats.used_bytes / (1024 ** 3)).toFixed(2)} GB`
-                    ) : (
-                      "—"
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 10 }}>
-                <div
-                  style={{
-                    height: 10,
-                    background: "rgba(255,255,255,0.04)",
-                    borderRadius: 999,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: stats && stats.quota_bytes
-                        ? `${Math.min(100, (stats.used_bytes / stats.quota_bytes) * 100)}%`
-                        : "0%",
-                      background: theme.primaryGradient,
-                      transition: "width 500ms ease",
-                    }}
-                  />
-                </div>
-                <div style={{ marginTop: 8, color: theme.muted, fontSize: 13 }}>
-                  {stats ? `${formatBytes(stats.used_bytes)} used` : ""}
-                  {stats && stats.quota_bytes ? ` • ${formatBytes(stats.quota_bytes)} total` : ""}
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                flex: "1 1 220px",
-                padding: 18,
-                borderRadius: theme.radius,
-                background: theme.card,
-                border: `1px solid ${theme.borderGlow}`,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <CloudUpload color="#ffd2a8" />
-                <div>
-                  <div style={{ color: theme.muted, fontSize: 13 }}>Total Files</div>
-                  <div style={{ fontWeight: 800, fontSize: 20 }}>
-                    {loadingStats ? "Loading…" : stats ? stats.total_assets : "—"}
-                  </div>
-                </div>
-              </div>
-              <div style={{ marginTop: 8, color: theme.muted, fontSize: 13 }}>
-                Tokens created: {stats ? stats.tokens_count ?? "—" : "—"}
-              </div>
-            </div>
-
-            <div
-              style={{
-                flex: "1 1 220px",
-                padding: 18,
-                borderRadius: theme.radius,
-                background: theme.card,
-                border: `1px solid ${theme.borderGlow}`,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Key color="#d5f8ff" />
-                <div>
-                  <div style={{ color: theme.muted, fontSize: 13 }}>Token model</div>
-                  <div style={{ fontWeight: 700 }}>Stateless token access</div>
-                </div>
-              </div>
-              <div style={{ marginTop: 8, color: theme.muted, fontSize: 13 }}>
-                Your token is your account. Keep it safe.
-              </div>
-            </div>
-          </div>
-
-          {errorStats && (
-            <div style={{ color: "#ffb4b4", fontSize: 13 }}>{errorStats}</div>
-          )}
-        </section>
-      </main>
-    </div>
-  );
-}
-
-/* -------------------- UPLOAD DASHBOARD -------------------- */
-function UploadDashboard({ userId, token, onLogout }) {
-  const [files, setFiles] = useState([]);
-  const [loadingFiles, setLoadingFiles] = useState(true);
-  const fileRef = useRef();
-  const firestorePath = `artifacts/${(typeof window !== "undefined" && window.__app_id) || "default-app-id"}/users/${userId}/files`;
-
-  useEffect(() => {
-    if (!userId) return;
-    const col = collection(getFirestore(), firestorePath);
-    // keep ordering by created timestamp if present
-    const q = query(col, orderBy("created", "desc"));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setFiles(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setLoadingFiles(false);
-      },
-      (err) => {
-        console.error("files snapshot error", err);
-        setLoadingFiles(false);
-      }
-    );
-    return () => unsub();
-  }, [userId, firestorePath]);
-
-  const uploadToCloudinary = async (file) => {
-    if (!file) return;
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", UPLOAD_PRESET);
-    fd.append("folder", `${UPLOAD_FOLDER}/${token}`);
-    // optional: add context or tags
-    fd.append("context", `token=${token}|name=${file.name}`);
-
-    const resp = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
-      {
-        method: "POST",
-        body: fd,
-      }
-    );
-    if (!resp.ok) {
-      const txt = await resp.text();
-      throw new Error(`Upload failed: ${txt}`);
-    }
-    const data = await resp.json();
-    // index in Firestore
-    await setDoc(doc(collection(getFirestore(), firestorePath)), {
-      name: file.name,
-      size: file.size,
-      contentType: file.type || "unknown",
-      secure_url: data.secure_url,
-      public_id: data.public_id,
-      created: serverTimestamp(),
-    });
-  };
-
-  const handleFilePick = async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    try {
-      await uploadToCloudinary(f);
-    } catch (err) {
-      console.error("upload error:", err);
-      alert("Upload failed: " + err.message);
-    }
-  };
-
-  const handleDeleteFile = async (docId, publicId) => {
-    if (!confirm("Delete this file permanently?")) return;
-    try {
-      // call serverless delete to remove from Cloudinary (needs API secret)
-      const r = await fetch("/api/delete", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ public_id: publicId }),
-      });
-      if (!r.ok) {
-        const t = await r.text();
-        throw new Error(t || "delete failed");
-      }
-      // delete Firestore index
-      await deleteDoc(doc(getFirestore(), firestorePath, docId));
-    } catch (err) {
-      console.error("delete error", err);
-      alert("Delete failed: " + err.message);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: `linear-gradient(180deg, ${theme.bg}, #02030a)`,
-        color: theme.text,
-        paddingBottom: 80,
-      }}
-    >
-      <header
-        style={{
-          height: 72,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 20px",
-        }}
-      >
-        <div style={{ fontWeight: 800, fontFamily: "Orbitron, sans-serif" }}>
-          DASHBOARD
+          <div class="text-xs opacity-80" id="storageUsageText">—</div>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <div
-            style={{
-              padding: "6px 10px",
-              borderRadius: 10,
-              background: theme.card,
-              border: `1px solid ${theme.borderGlow}`,
-              color: theme.muted,
-              fontFamily: "JetBrains Mono, monospace",
-            }}
-          >
-            Token: {token?.slice(0, 6)}...{token?.slice(-4)}
-          </div>
-          <button
-            onClick={onLogout}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 10,
-              background: "transparent",
-              border: `1px solid ${theme.borderGlow}`,
-              color: theme.text,
-            }}
-          >
-            <ArrowLeft size={14} /> Logout
-          </button>
-        </div>
-      </header>
-
-      <main style={{ maxWidth: 1200, margin: "28px auto", padding: "0 20px" }}>
-        <div
-          onClick={() => fileRef.current?.click()}
-          style={{
-            ...{
-              padding: 28,
-              borderRadius: theme.radius,
-              border: `1px dashed ${theme.borderGlow}`,
-              background: theme.card,
-              cursor: "pointer",
-              textAlign: "center",
-              marginBottom: 18,
-            },
-          }}
-        >
-          <input
-            ref={fileRef}
-            type="file"
-            style={{ display: "none" }}
-            onChange={handleFilePick}
-          />
-          <CloudUpload size={48} />
-          <div style={{ marginTop: 8, fontWeight: 700 }}>Click or drag to upload</div>
-          <div style={{ color: theme.muted, marginTop: 6 }}>
-            Uploads go directly to Cloudinary (unsigned). Max file size depends on your Cloudinary preset.
-          </div>
+        <div class="meter" aria-hidden>
+          <span id="storageFill" style="width:0%; background: linear-gradient(90deg,#4facfe,#00f2fe);"></span>
         </div>
 
-        <section style={{ display: "grid", gap: 12 }}>
-          {loadingFiles ? (
-            <div style={{ textAlign: "center", padding: 12 }}>
-              <ArrowPath className="spin" />
-              <div style={{ color: theme.muted }}>Loading files…</div>
-            </div>
-          ) : files.length === 0 ? (
-            <div
-              style={{
-                padding: 28,
-                borderRadius: theme.radius,
-                background: theme.card,
-                border: `1px solid ${theme.borderGlow}`,
-                textAlign: "center",
-              }}
-            >
-              <Folder size={48} />
-              <div style={{ marginTop: 8, fontWeight: 700 }}>No files yet</div>
-              <div style={{ color: theme.muted, marginTop: 6 }}>
-                Upload a file to get started.
-              </div>
-            </div>
-          ) : (
-            files.map((f) => (
-              <div
-                key={f.id}
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "center",
-                  padding: 12,
-                  borderRadius: 12,
-                  background: theme.card,
-                  border: `1px solid ${theme.borderGlow}`,
-                }}
-              >
-                <div style={{ flex: "1 1 auto" }}>
-                  <div style={{ fontWeight: 700 }}>{f.name}</div>
-                  <div style={{ color: theme.muted, fontSize: 13 }}>
-                    {f.size ? `${(f.size / 1024 / 1024).toFixed(2)} MB` : ""}
-                    {f.created ? ` • ${new Date(f.created?.toDate?.() || f.created).toLocaleString()}` : ""}
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", gap: 8 }}>
-                  <a
-                    href={f.secure_url || f.url || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      background: "transparent",
-                      border: `1px solid ${theme.borderGlow}`,
-                      color: theme.text,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                    onClick={(e) => {
-                      // allow click through
-                    }}
-                    title="Download / Open"
-                  >
-                    <ArrowDown size={14} /> Open
-                  </a>
-
-                  <button
-                    onClick={() => handleDeleteFile(f.id, f.public_id)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      background: "transparent",
-                      border: `1px solid rgba(255,80,80,0.12)`,
-                      color: "#ffb4b4",
-                    }}
-                    title="Delete file"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      </main>
-    </div>
-  );
-}
-
-/* -------------------- APP ROOT -------------------- */
-export default function App() {
-  const [userId, setUserId] = useState(null);
-  const [token, setToken] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
-
-  // Initialize Firebase client once
-  useEffect(() => {
-    if (!Object.keys(firebaseConfig || {}).length) {
-      console.warn("Firebase config not provided; Firestore features will be disabled.");
-      setAuthReady(true);
-      return;
-    }
-    try {
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-      (async () => {
-        try {
-          if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
-          else await signInAnonymously(auth);
-        } catch (err) {
-          console.warn("Firebase sign-in failed:", err);
-        }
-      })();
-
-      const unsub = onAuthStateChanged(auth, (u) => {
-        setUserId(u ? u.uid : null);
-        setAuthReady(true);
-      });
-      return () => unsub();
-    } catch (err) {
-      console.error("Firebase init error:", err);
-      setAuthReady(true);
-    }
-  }, []);
-
-  const handleEnterToken = (t) => {
-    // minimal validation: token must be non-empty
-    if (!t || !t.trim()) {
-      alert("Enter a token to continue.");
-      return;
-    }
-    setToken(t.trim());
-  };
-
-  const handleLogout = () => {
-    setToken(null);
-    // optionally sign out user if you want
-    // and/or clear local state
-  };
-
-  if (!authReady) {
-    return (
-      <div style={{ minHeight: "100vh", background: theme.bg, color: theme.text, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
-          <ArrowPath size={36} className="spin" />
-          <div style={{ color: theme.muted, marginTop: 8 }}>Initializing…</div>
+        <div class="flex items-center justify-between mt-2">
+          <div class="text-xs opacity-80">Tokens created</div>
+          <div class="font-medium" id="tokenCount">—</div>
         </div>
       </div>
-    );
-  }
+    </div>
 
-  if (!token) {
-    return <Home onEnterToken={handleEnterToken} />;
-  }
+    <!-- Right: token entry / quick actions -->
+    <div class="glass p-6 flex flex-col gap-4">
+      <div>
+        <h2 class="text-lg font-bold">Enter your Token</h2>
+        <p class="text-sm opacity-80 mb-3">Use a token to access an upload space. If it doesn't exist, one will be created for you.</p>
+      </div>
 
-  if (!userId) {
-    // If Firestore is not configured or not signed in, still allow upload flow
-    // but show a notice that Firestore indexing might not work.
-    return <UploadDashboard userId={userId || "anon"} token={token} onLogout={handleLogout} />;
-  }
+      <div class="flex gap-3">
+        <input id="tokenInput" class="flex-1 rounded-lg px-4 py-3 bg-transparent border border-white/8 placeholder:text-slate-400" placeholder="paste token or press Create new" />
+        <button id="useTokenBtn" class="px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-400 text-slate-900 font-semibold">Go</button>
+      </div>
 
-  return <UploadDashboard userId={userId} token={token} onLogout={handleLogout} />;
+      <div class="flex gap-3">
+        <button id="createBtn" class="flex-1 px-4 py-3 rounded-lg border border-white/6 hover:bg-white/3 transition">Create new token</button>
+        <button id="demoBtn" class="px-4 py-3 rounded-lg bg-white/5">Try demo</button>
+      </div>
+
+      <div class="mt-4 text-sm text-slate-400">
+        <strong>Note:</strong> Files are stored in your Cloudinary folder. Tokens map to subfolders in Cloudinary (e.g. <code>mycloud/&lt;token&gt;</code>).
+      </div>
+
+      <div class="mt-4 flex items-center justify-between">
+        <div class="text-xs opacity-70">Advanced</div>
+        <div class="flex items-center gap-2">
+          <div class="dot-menu" id="helpMenu" title="Help (client-only)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <a href="upload.html" id="openUploadLink" class="px-3 py-2 rounded-lg bg-white/6">Open upload (token required)</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full width footer explanatory row -->
+    <div class="col-span-full glass p-4 flex items-center justify-between">
+      <div class="text-sm">
+        <strong>Cloudinary</strong> configured: <code>dzvz7kzin</code> · folder base: <code>mycloud</code>
+      </div>
+      <div class="text-sm opacity-70">Ready to deploy on Vercel + GitHub</div>
+    </div>
+  </div>
+
+<script>
+/* ========= Config (client-side demo) =========
+   These are safe public values you provided for front-end uploads.
+   For admin actions (listing, deleting, merging), implement Vercel serverless functions that use
+   CLOUDINARY_API_KEY & CLOUDINARY_API_SECRET kept in Vercel env.
+*/
+const CLOUD_NAME = 'dzvz7kzin';
+const UPLOAD_FOLDER = 'mycloud';
+
+/* ======= Token system (local demo) =========
+   Stores tokens in localStorage for demo: actual project should persist tokens on server
+*/
+function genToken(len=8){
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let t='';
+  for(let i=0;i<len;i++) t+=chars[Math.floor(Math.random()*chars.length)];
+  return t;
 }
 
-/* ========================= Serverless API examples (Vercel / Next.js)
-   Copy these as separate files under pages/api/*.js (or /api/*.js)
-   They require cloudinary npm package: npm i cloudinary
-   And server env vars: CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, NEXT_PUBLIC_CLOUD_NAME, NEXT_PUBLIC_UPLOAD_FOLDER
-------------------------------------------------------------------------- */
+function loadTokens(){ return JSON.parse(localStorage.getItem('qloud_tokens')||'[]'); }
+function saveTokens(arr){ localStorage.setItem('qloud_tokens', JSON.stringify(arr)); }
+function ensureTokenExists(token){
+  const ts = loadTokens();
+  if(!ts.includes(token)) { ts.push(token); saveTokens(ts); }
+}
 
-/*
-pages/api/cloudinary-stats.js
+/* UI hooks */
+const tokenInput = document.getElementById('tokenInput');
+const createBtn = document.getElementById('createBtn');
+const useTokenBtn = document.getElementById('useTokenBtn');
+const tokenCountEl = document.getElementById('tokenCount');
+const storageFill = document.getElementById('storageFill');
+const storageUsageText = document.getElementById('storageUsageText');
 
-import { v2 as cloudinary } from 'cloudinary';
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+function refreshTokenCount(){
+  const ts = loadTokens();
+  tokenCountEl.textContent = ts.length;
+}
+
+createBtn.addEventListener('click', ()=>{
+  const t = genToken(10);
+  ensureTokenExists(t);
+  refreshTokenCount();
+  tokenInput.value = t;
+  navigator.clipboard?.writeText(t).catch(()=>{});
+  alert('Token created and copied to clipboard: '+t);
 });
 
-export default async function handler(req, res) {
-  try {
-    // Cloudinary account usage
-    // Note: cloudinary.api.usage() may return different fields depending on plan
-    const usage = await cloudinary.api.usage();
-    // best-effort fields:
-    const used_bytes = usage && usage.raw_bytes ? usage.raw_bytes : (usage && usage.storage ? usage.storage.used_bytes : null);
-    const quota_bytes = usage && usage.quota_bytes ? usage.quota_bytes : null;
-    // For total assets/tokens_count we do a folder list (may be expensive for very large accounts)
-    // We'll attempt to list resources under the upload folder root and count them.
-    const folderPrefix = process.env.NEXT_PUBLIC_UPLOAD_FOLDER || 'mycloud';
-    // Count assets (may be paginated)
-    let next_cursor = undefined;
-    let total_assets = 0;
-    const seenTokens = new Set();
-    do {
-      const r = await cloudinary.api.resources({
-        type: 'upload',
-        prefix: folderPrefix + '/',
-        max_results: 500,
-        next_cursor
-      });
-      if (r && r.resources) {
-        total_assets += r.resources.length;
-        // infer tokens by folder structure: mycloud/{token}/...
-        r.resources.forEach(x => {
-          const parts = x.public_id.split('/');
-          if (parts.length >= 2) seenTokens.add(parts[1]);
-        });
-      }
-      next_cursor = r.next_cursor;
-    } while (next_cursor);
+useTokenBtn.addEventListener('click', ()=>{
+  const t = tokenInput.value.trim();
+  if(!t){ alert('Paste a token or create one.'); return; }
+  ensureTokenExists(t);
+  // open upload page with token as query param
+  window.location.href = `upload.html?token=${encodeURIComponent(t)}`;
+});
 
-    res.status(200).json({
-      used_bytes: used_bytes || 0,
-      quota_bytes: quota_bytes || null,
-      total_assets,
-      tokens_count: seenTokens.size
+/* Demo button opens an example token */
+document.getElementById('demoBtn').addEventListener('click', ()=>{
+  const demo = 'demo-token';
+  ensureTokenExists(demo);
+  window.location.href = `upload.html?token=${encodeURIComponent(demo)}`;
+});
+
+/* Storage meter - client-only demo
+   Real storage summary needs server-side aggregation of Cloudinary resources.
+   We'll attempt to call an API route first; otherwise show simulated values and show a hint.
+*/
+async function fetchStorageSummary(){
+  try{
+    // Replace with your Vercel serverless route that returns:
+    // { totalBytes: 12345, limitBytes: 10*1024*1024*1024, tokensCount: 5 }
+    const resp = await fetch('/api/storage-summary');
+    if(!resp.ok) throw new Error('no server api');
+    const data = await resp.json();
+    const pct = Math.min(100, (data.totalBytes / data.limitBytes) * 100);
+    storageFill.style.width = pct+'%';
+    storageUsageText.textContent = `${(data.totalBytes/(1024*1024)).toFixed(2)} MB of ${(data.limitBytes/(1024*1024)).toFixed(0)} MB`;
+    return;
+  } catch (e) {
+    // fallback demo values (client-only)
+    const used = Math.floor(Math.random()*800) + 120; // MB
+    const limit = 2048; // MB (2GB example)
+    const pct = Math.min(100, (used/limit)*100);
+    storageFill.style.width = pct+'%';
+    storageUsageText.textContent = `${used} MB of ${limit} MB (demo) — add /api/storage-summary in Vercel for real data`;
+  }
+}
+
+/* initial */
+refreshTokenCount();
+fetchStorageSummary();
+
+/* ========= 3D cloud with Three.js (simple, interactive) ========= */
+(function initCloud3D(){
+  const container = document.getElementById('three-container');
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(0,0,20);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  // soft ambient
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const point = new THREE.PointLight(0x66f6ff, 0.9);
+  point.position.set(10,10,25);
+  scene.add(point);
+
+  // group of translucent spheres to form a cloud-like blob
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, roughness: 0.8, metalness: 0.1 });
+  for(let i=0;i<18;i++){
+    const s = new THREE.Mesh(new THREE.SphereGeometry(2.2 + Math.random()*1.6, 24, 24), mat.clone());
+    s.position.set((Math.random()-0.5)*6, (Math.random()-0.5)*2.6, (Math.random()-0.5)*4);
+    s.material.opacity = 0.12 + Math.random()*0.12;
+    s.scale.setScalar(0.8 + Math.random()*1.2);
+    group.add(s);
+  }
+  scene.add(group);
+
+  // subtle particle points inside cloud
+  const ptsGeo = new THREE.BufferGeometry();
+  const count = 300;
+  const pos = new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    pos[i*3]= (Math.random()-0.5)*6;
+    pos[i*3+1]= (Math.random()-0.5)*2;
+    pos[i*3+2]= (Math.random()-0.5)*4;
+  }
+  ptsGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const ptsMat = new THREE.PointsMaterial({size:0.06, color:0xe6fbff, transparent:true, opacity:0.9});
+  const points = new THREE.Points(ptsGeo, ptsMat);
+  group.add(points);
+
+  // interaction
+  let mouseX=0, mouseY=0;
+  container.addEventListener('mousemove', (e)=>{
+    const rect=container.getBoundingClientRect();
+    mouseX = ( (e.clientX - rect.left) / rect.width - 0.5 ) * 2;
+    mouseY = ( (e.clientY - rect.top) / rect.height - 0.5 ) * 2;
+  });
+
+  // simple animation using noise
+  const simplex = new SimplexNoise();
+  let t=0;
+  function animate(){
+    t += 0.005;
+    group.rotation.y += (mouseX*0.15 - group.rotation.y) * 0.03;
+    group.rotation.x += (-mouseY*0.08 - group.rotation.x) * 0.03;
+    // animate spheres with noise
+    group.children.forEach((m,i)=>{
+      const n = simplex.noise3D(i*0.12, t*0.5, 0);
+      m.position.y = m.position.y + Math.sin(t*0.7 + i) * 0.0005 + n*0.01;
+      m.material.opacity = 0.10 + (Math.sin(t*0.6+i*0.3)+1)*0.03;
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err) });
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
   }
-}
-*/
+  animate();
 
-/*
-pages/api/delete.js
-// Delete a single public_id from Cloudinary (server-only)
-import { v2 as cloudinary } from 'cloudinary';
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-export default async function handler(req, res) {
-  try {
-    const { public_id } = req.body;
-    if (!public_id) return res.status(400).json({ error: 'public_id required' });
-    const r = await cloudinary.uploader.destroy(public_id, { invalidate: true });
-    res.status(200).json(r);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err) });
-  }
-}
-*/
-
-/*
-pages/api/merge.js
-// Move files from a list of source tokens into dest token by renaming public_ids
-import { v2 as cloudinary } from 'cloudinary';
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-export default async function handler(req, res) {
-  try {
-    const { dest, sources } = req.body;
-    if (!dest || !sources || !Array.isArray(sources)) return res.status(400).json({ error: 'dest + sources required' });
-    const folder = process.env.NEXT_PUBLIC_UPLOAD_FOLDER || 'mycloud';
-
-    for (const s of sources) {
-      let next_cursor = undefined;
-      do {
-        const r = await cloudinary.api.resources({
-          type: 'upload',
-          prefix: `${folder}/${s}/`,
-          max_results: 500,
-          next_cursor
-        });
-        for (const file of r.resources) {
-          const parts = file.public_id.split('/');
-          // replace token part
-          if (parts.length >= 2) {
-            parts[1] = dest;
-            const newPublicId = parts.join('/');
-            await cloudinary.uploader.rename(file.public_id, newPublicId, { overwrite: true });
-          }
-        }
-        next_cursor = r.next_cursor;
-      } while (next_cursor);
-    }
-    res.status(200).json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err) });
-  }
-}
-*/
-
-/*
-pages/api/delete-token.js
-// Delete all resources under a token folder
-import { v2 as cloudinary } from 'cloudinary';
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-export default async function handler(req, res) {
-  try {
-    const { token } = req.body;
-    if (!token) return res.status(400).json({ error: 'token required' });
-    const folder = process.env.NEXT_PUBLIC_UPLOAD_FOLDER || 'mycloud';
-    let next_cursor = undefined;
-    do {
-      const r = await cloudinary.api.resources({
-        type: 'upload',
-        prefix: `${folder}/${token}/`,
-        max_results: 500,
-        next_cursor
-      });
-      for (const file of r.resources) {
-        await cloudinary.uploader.destroy(file.public_id, { invalidate: true });
-      }
-      next_cursor = r.next_cursor;
-    } while (next_cursor);
-    res.status(200).json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err) });
-  }
-}
-*/
-
+  // responsive
+  window.addEventListener('resize', ()=>{
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+  });
+})();
+</script>
+</body>
+</html>
