@@ -5,7 +5,9 @@ module.exports = async (req, res) => {
   const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dzvz7kzin';
   const API_KEY = process.env.CLOUDINARY_API_KEY;
   const API_SECRET = process.env.CLOUDINARY_API_SECRET;
+
   const BASE_FOLDER = 'mycloud';
+  const STORAGE_LIMIT_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 
   cloudinary.config({
     cloud_name: CLOUD_NAME,
@@ -16,27 +18,42 @@ module.exports = async (req, res) => {
   try {
     let totalBytes = 0;
     const tokenSet = new Set();
+    let nextCursor = null;
 
-    let result = await cloudinary.search
-      .expression(`folder:${BASE_FOLDER}/*`)
-      .max_results(500)
-      .execute();
+    do {
+      const search = cloudinary.search
+        .expression(`public_id:${BASE_FOLDER}/*`)
+        .sort_by('created_at', 'desc')
+        .max_results(500);
 
-    result.resources.forEach(file => {
-      totalBytes += file.bytes || 0;
+      if (nextCursor) search.next_cursor(nextCursor);
 
-      // public_id = mycloud/token/filename
-      const parts = file.public_id.split('/');
-      if (parts.length >= 2) tokenSet.add(parts[1]);
-    });
+      const result = await search.execute();
+
+      for (const file of result.resources) {
+        totalBytes += file.bytes || 0;
+
+        // public_id format: mycloud/<token>/<filename>
+        const parts = file.public_id.split('/');
+        if (parts.length >= 2) {
+          tokenSet.add(parts[1]);
+        }
+      }
+
+      nextCursor = result.next_cursor;
+    } while (nextCursor);
 
     res.status(200).json({
       totalBytes,
-      limitBytes: 2 * 1024 * 1024 * 1024, // 2GB example
+      limitBytes: STORAGE_LIMIT_BYTES,
       tokensCount: tokenSet.size
     });
+
   } catch (error) {
     console.error('Storage summary error:', error);
-    res.status(500).json({ error: 'Failed to fetch storage summary' });
+    res.status(500).json({
+      error: 'Failed to fetch storage summary',
+      details: error.message
+    });
   }
 };
