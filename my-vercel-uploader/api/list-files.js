@@ -7,8 +7,9 @@ module.exports = async (req, res) => {
   const API_KEY = process.env.CLOUDINARY_API_KEY || '484797141727837';
   const API_SECRET = process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk';
   const UPLOAD_FOLDER = process.env.CLOUDINARY_UPLOAD_FOLDER || 'mycloud';
+  const BASE_FOLDER = 'mycloud';
 
-const token = req.query.token;
+  const token = req.query.token;
 
   if (!token) {
     return res.status(400).json({ error: 'Missing token' });
@@ -34,6 +35,8 @@ const token = req.query.token;
 
   } catch (error) {
     console.error('Cloudinary list error:', error);
-    res.status(500).json({ error: 'Failed to fetch files' });
+    res.status(500).json({ error: 'Failed to fetch files from Cloudinary.' });
   }
 };
+};
+
