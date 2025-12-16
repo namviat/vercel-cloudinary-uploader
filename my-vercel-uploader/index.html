@@ -1,65 +1,200 @@
-// /api/token.js
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_REPO = process.env.GITHUB_REPO; // owner/repo
-const TOKENS_FILE_PATH = process.env.TOKENS_FILE_PATH || 'tokens.txt';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Qloud • Token-based Cloud Storage</title>
 
-if (!GITHUB_TOKEN || !GITHUB_REPO) {
-  console.warn('GITHUB_TOKEN or GITHUB_REPO not set in env');
-}
+<script src="https://cdn.tailwindcss.com"></script>
 
-async function getFile() {
-  const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${TOKENS_FILE_PATH}`;
-  const resp = await fetch(url, { headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' }});
-  if (resp.status === 404) return null;
-  if (!resp.ok) throw new Error('GitHub get file error: ' + resp.statusText);
-  return resp.json();
-}
-
-async function putFile(contentBase64, sha, message) {
-  const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${TOKENS_FILE_PATH}`;
-  const body = { message, content: contentBase64, branch: undefined };
-  if (sha) body.sha = sha;
-  const resp = await fetch(url, {
-    method: 'PUT',
-    headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json', 'Content-Type':'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (!resp.ok) {
-    const txt = await resp.text();
-    throw new Error('GitHub put file error: ' + resp.status + ' ' + txt);
+<style>
+  body {
+    background: radial-gradient(circle at top, #0b1020, #020409);
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #e5edff;
   }
-  return resp.json();
-}
 
-module.exports = async (req, res) => {
+  .glass {
+    backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+  }
+
+  .meter {
+    height: 14px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .meter > span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #7c3aed, #22d3ee);
+    transition: width 0.6s ease;
+  }
+
+  .neon-btn {
+    background: linear-gradient(90deg, #7c3aed, #22d3ee);
+    color: #020409;
+  }
+
+  .neon-btn:hover {
+    filter: brightness(1.1);
+  }
+</style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6">
+
+<div class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+  <!-- LEFT PANEL -->
+  <div class="glass p-6 relative overflow-hidden">
+    <h1 class="text-3xl font-extrabold tracking-wide">☁️ Qloud</h1>
+    <p class="text-sm opacity-80 mt-1">
+      Token-based cloud storage — no login, no password.
+    </p>
+
+    <div class="mt-8 glass p-4">
+      <div class="flex justify-between items-center mb-2">
+        <div class="text-sm opacity-80">Global storage usage</div>
+        <div id="storageText" class="text-sm font-semibold">Loading…</div>
+      </div>
+
+      <div class="meter">
+        <span id="storageFill" style="width:0%"></span>
+      </div>
+
+      <div class="flex justify-between items-center mt-3">
+        <div class="text-sm opacity-80">Total tokens created</div>
+        <div id="tokenCount" class="font-semibold">—</div>
+      </div>
+    </div>
+
+    <div class="mt-6 text-xs opacity-60">
+      Storage is shared globally. Each token maps to its own Cloudinary folder.
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="glass p-6">
+    <h2 class="text-xl font-bold mb-2">Enter your token</h2>
+    <p class="text-sm opacity-80 mb-4">
+      If the token exists, you’ll enter it.  
+      If not, it will be created automatically.
+    </p>
+
+    <div class="flex gap-3">
+      <input
+        id="tokenInput"
+        placeholder="paste or create token"
+        class="flex-1 px-4 py-3 rounded-lg bg-transparent border border-white/10 outline-none"
+      />
+      <button
+        id="openBtn"
+        class="px-4 py-3 rounded-lg font-semibold neon-btn"
+      >
+        Open
+      </button>
+    </div>
+
+    <button
+      id="createBtn"
+      class="w-full mt-3 py-2 rounded-lg border border-white/10 hover:bg-white/5"
+    >
+      Create new token
+    </button>
+
+    <div class="mt-6 text-xs opacity-60">
+      Tokens act like accounts. Share carefully.
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="col-span-full glass p-3 text-xs flex justify-between opacity-70">
+    <span>Powered by Cloudinary</span>
+    <span>Deploy: GitHub → Vercel</span>
+  </div>
+
+</div>
+
+<script>
+/* ================================
+   STORAGE + TOKEN SUMMARY
+================================ */
+
+async function loadSummary() {
   try {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { token } = req.body || {};
-    if (!token || typeof token !== 'string' || !token.trim()) return res.status(400).json({ error: 'token required' });
-    const normalized = token.trim();
+    const res = await fetch('/api/storage-summary');
+    const data = await res.json();
 
-    const fileData = await getFile();
-    if (fileData) {
-      const content = Buffer.from(fileData.content, 'base64').toString('utf8');
-      const lines = content.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-      if (lines.includes(normalized)) {
-        return res.status(200).json({ exists: true });
-      }
-      // append and update
-      lines.push(normalized);
-      const newContent = lines.join('\n') + '\n';
-      const base64 = Buffer.from(newContent, 'utf8').toString('base64');
-      await putFile(base64, fileData.sha, `Add token ${normalized} via Qloud`);
-      return res.status(200).json({ created: true });
-    } else {
-      // file doesn't exist: create it with the token
-      const newContent = normalized + '\n';
-      const base64 = Buffer.from(newContent, 'utf8').toString('base64');
-      await putFile(base64, undefined, `Create tokens file and add ${normalized}`);
-      return res.status(200).json({ created: true });
-    }
+    const usedMB = (data.totalBytes / (1024 * 1024)).toFixed(2);
+    const limitMB = (data.limitBytes / (1024 * 1024)).toFixed(0);
+    const percent = Math.min(100, (data.totalBytes / data.limitBytes) * 100);
+
+    document.getElementById('storageFill').style.width = percent + '%';
+    document.getElementById('storageText').textContent =
+      `${usedMB} MB / ${limitMB} MB`;
+
+    document.getElementById('tokenCount').textContent =
+      data.tokensCount ?? '—';
+
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message || String(err) });
+    document.getElementById('storageText').textContent = 'Error';
+  }
+}
+
+loadSummary();
+
+/* ================================
+   TOKEN HANDLING
+================================ */
+
+const tokenInput = document.getElementById('tokenInput');
+const openBtn = document.getElementById('openBtn');
+const createBtn = document.getElementById('createBtn');
+
+async function ensureToken(token) {
+  const res = await fetch('/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token })
+  });
+
+  if (!res.ok) {
+    throw new Error('Token API failed');
+  }
+
+  return res.json();
+}
+
+openBtn.onclick = async () => {
+  const token = tokenInput.value.trim();
+  if (!token) return alert('Enter a token');
+
+  try {
+    await ensureToken(token);
+    window.location.href = `/upload.html?token=${encodeURIComponent(token)}`;
+  } catch (e) {
+    alert('Failed to open token');
   }
 };
+
+createBtn.onclick = async () => {
+  const token = Math.random().toString(36).slice(2, 12);
+  tokenInput.value = token;
+
+  try {
+    await ensureToken(token);
+    loadSummary();
+  } catch (e) {
+    alert('Failed to create token');
+  }
+};
+</script>
+
+</body>
+</html>
