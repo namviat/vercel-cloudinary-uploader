@@ -6,6 +6,7 @@
 <title>Qloud — Upload</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
@@ -51,6 +52,7 @@
 
 </style>
 </head>
+  
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
 
 <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -108,6 +110,22 @@
 </div>
 
 <script>
+  /*=========================
+  Auto file-type icon assignment
+  ============================*/
+  function getFileIcon(publicId) {
+  const ext = publicId.split('.').pop().toLowerCase();
+
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
+  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
+  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
+  if (['pdf'].includes(ext)) return 'file-text';
+  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
+
+  return 'file';
+}
+
 /* =========================
    CONFIG
 ========================= */
@@ -176,34 +194,37 @@ function renderFiles(){
     const card = document.createElement('div');
     card.className = 'file-card bg-white/10 rounded-xl p-4 hover:bg-white/15 transition';
 
-    card.innerHTML = `
-      <!-- ACTION ICONS -->
-      <div class="file-actions">
-        <!-- Download -->
-        <a
-          href="${f.secure_url}"
-          download
-          class="file-action-btn text-emerald-400"
-          title="Download"
-        >
-          ⬇
-        </a>
+    const icon = getFileIcon(f.public_id);
 
-        <!-- Delete -->
-        <button
-          class="file-action-btn text-red-400"
-          title="Delete"
-          data-id="${f.public_id}"
-        >
-          ✕
-        </button>
-      </div>
+card.innerHTML = `
+  <!-- ACTION ICONS -->
+  <div class="file-actions">
+    <a
+      href="${f.secure_url}"
+      download
+      class="file-action-btn text-emerald-400"
+      title="Download"
+    >
+      <i data-lucide="download"></i>
+    </a>
 
-      <!-- FILE INFO -->
-      <div class="text-3xl mb-2">📄</div>
-      <div class="font-semibold truncate">${name}</div>
-      <div class="text-xs opacity-60 mt-1">${size} MB</div>
-    `;
+    <button
+      class="file-action-btn text-red-400"
+      title="Delete"
+      data-id="${f.public_id}"
+    >
+      <i data-lucide="trash-2"></i>
+    </button>
+  </div>
+
+  <!-- FILE INFO -->
+  <div class="text-4xl mb-2 text-indigo-300">
+    <i data-lucide="${icon}"></i>
+  </div>
+  <div class="font-semibold truncate">${name}</div>
+  <div class="text-xs opacity-60 mt-1">${size} MB</div>
+`;
+
 
     // Delete handler
     card.querySelector('button').onclick = () => {
