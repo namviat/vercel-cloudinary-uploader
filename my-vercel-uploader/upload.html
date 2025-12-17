@@ -199,14 +199,16 @@ function renderFiles(){
 card.innerHTML = `
   <!-- ACTION ICONS -->
   <div class="file-actions">
-    <a
-      href="${f.secure_url}"
-      download
-      class="file-action-btn text-emerald-400"
-      title="Download"
-    >
-      <i data-lucide="download"></i>
-    </a>
+  
+  <button
+  class="file-action-btn text-emerald-400"
+  title="Download"
+  data-url="${f.secure_url}"
+  data-name="${name}"
+>
+  <i data-lucide="download"></i>
+</button>
+
 
     <button
       class="file-action-btn text-red-400"
@@ -234,6 +236,10 @@ card.innerHTML = `
     fileGrid.appendChild(card);
   });
   lucide.createIcons();
+  const downloadBtn = card.querySelector('[data-url]');
+downloadBtn.onclick = () =>
+  forceDownload(downloadBtn.dataset.url, downloadBtn.dataset.name);
+
 
 }
 
@@ -301,7 +307,28 @@ async function deleteFile(publicId){
     showMsg('Delete failed','error');
   }
 }
+/* =========================
+   DOWNLOAD FILES
+========================= */
+  async function forceDownload(url, filename) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Download failed');
 
+    const blob = await res.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  } catch (e) {
+    showMsg('Download failed', 'error');
+  }
+}
+
+  
 /* =========================
    INIT
 ========================= */
