@@ -228,9 +228,7 @@ card.innerHTML = `
 
     // Delete handler
     card.querySelector('button').onclick = () => {
-      if (confirm('Delete this file?')) {
         deleteFile(f.public_id);
-      }
     };
 
     fileGrid.appendChild(card);
