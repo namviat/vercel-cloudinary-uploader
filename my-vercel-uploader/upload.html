@@ -16,6 +16,39 @@
     border: 2px solid rgba(59,130,246,1);
     box-shadow: 0 0 10px rgba(59,130,246,.35);
   }
+  .file-card {
+  position: relative;
+}
+
+.file-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.file-card:hover .file-actions {
+  opacity: 1;
+}
+
+.file-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.55);
+  cursor: pointer;
+}
+
+.file-action-btn:hover {
+  background: rgba(0,0,0,0.8);
+}
+
 </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
@@ -141,35 +174,48 @@ function renderFiles(){
     const size = (f.bytes / 1024 / 1024).toFixed(2);
 
     const card = document.createElement('div');
-    card.className = 'bg-white/10 rounded p-4';
+    card.className = 'file-card bg-white/10 rounded-xl p-4 hover:bg-white/15 transition';
 
     card.innerHTML = `
-      <div class="font-semibold truncate">${name}</div>
-      <div class="text-xs opacity-60 mb-3">${size} MB</div>
-
-      <div class="flex gap-2">
+      <!-- ACTION ICONS -->
+      <div class="file-actions">
+        <!-- Download -->
         <a
           href="${f.secure_url}"
           download
-          class="flex-1 text-center py-1 rounded bg-emerald-500/80 hover:bg-emerald-500"
+          class="file-action-btn text-emerald-400"
+          title="Download"
         >
-          Download
+          ⬇
         </a>
+
+        <!-- Delete -->
         <button
-          class="flex-1 py-1 rounded bg-red-500/70 hover:bg-red-500"
+          class="file-action-btn text-red-400"
+          title="Delete"
           data-id="${f.public_id}"
         >
-          Delete
+          ✕
         </button>
       </div>
+
+      <!-- FILE INFO -->
+      <div class="text-3xl mb-2">📄</div>
+      <div class="font-semibold truncate">${name}</div>
+      <div class="text-xs opacity-60 mt-1">${size} MB</div>
     `;
 
-    card.querySelector('button').onclick = () =>
-      deleteFile(f.public_id);
+    // Delete handler
+    card.querySelector('button').onclick = () => {
+      if (confirm('Delete this file?')) {
+        deleteFile(f.public_id);
+      }
+    };
 
     fileGrid.appendChild(card);
   });
 }
+
 
 /* =========================
    UPLOAD (CLICK + DROP)
