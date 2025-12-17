@@ -222,7 +222,6 @@ async function uploadFiles(list){
    DELETE FILE
 ========================= */
 async function deleteFile(publicId){
-  if (!confirm('Delete this file permanently?')) return;
 
   try {
     const res = await fetch('/api/delete-file', {
