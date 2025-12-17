@@ -18,14 +18,12 @@
   }
 </style>
 </head>
-
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
 
 <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
 <!-- SIDEBAR -->
 <div class="lg:col-span-1 bg-white/5 backdrop-blur p-4 rounded-xl">
-
   <div class="flex items-center gap-3">
     <div id="avatarPreview" class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-xl">U</div>
     <div>
@@ -34,21 +32,9 @@
     </div>
   </div>
 
-  <div class="mt-4">
-    <label class="text-xs opacity-70">Display name</label>
-    <input id="profileNameInput" class="w-full mt-1 p-2 rounded bg-transparent border border-white/10" />
-    <label class="text-xs opacity-70 mt-3 block">Avatar URL</label>
-    <input id="avatarInput" class="w-full mt-1 p-2 rounded bg-transparent border border-white/10" />
-    <button id="saveProfile" class="mt-3 w-full py-2 rounded bg-gradient-to-r from-blue-500 to-cyan-400 text-slate-900 font-semibold">
-      Save
-    </button>
-  </div>
-
-  <div class="mt-6">
-    <button id="logoutBtn" class="w-full py-2 rounded bg-white/5 hover:bg-white/10">
-      Log out
-    </button>
-  </div>
+  <button id="logoutBtn" class="mt-6 w-full py-2 rounded bg-white/5 hover:bg-white/10">
+    Log out
+  </button>
 </div>
 
 <!-- MAIN -->
@@ -56,17 +42,16 @@
 
   <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
 
-  <!-- UPLOAD -->
-  <div id="uploadBox" class="border-2 border-dashed border-indigo-500 rounded-xl p-6 text-center cursor-pointer bg-indigo-900/10 hover:bg-indigo-900/20">
-    <div class="text-5xl">📁</div>
-    <div class="font-bold mt-2">Drag & drop or click to upload</div>
-    <div class="text-sm opacity-70">Files are private to this token</div>
-
-    <div class="flex justify-center gap-4 mt-4">
-      <input id="fileInput" type="file" multiple hidden />
-      <button id="pickBtn" class="bg-indigo-500 px-4 py-2 rounded-full font-semibold">Choose files</button>
-      <button id="syncBtn" class="bg-white/10 px-4 py-2 rounded-full">Refresh</button>
-    </div>
+  <!-- UPLOAD BOX (CLICK + DRAG) -->
+  <div
+    id="uploadBox"
+    class="border-2 border-dashed border-indigo-500 rounded-xl p-10 text-center cursor-pointer
+           bg-indigo-900/10 hover:bg-indigo-900/20 transition"
+  >
+    <input id="fileInput" type="file" multiple hidden />
+    <div class="text-5xl mb-2">☁️</div>
+    <div class="font-bold">Click or drag & drop files here</div>
+    <div class="text-sm opacity-70 mt-1">Files are private to this token</div>
   </div>
 
   <!-- PROGRESS -->
@@ -77,14 +62,11 @@
     <div id="statusText" class="text-xs opacity-70 mt-1"></div>
   </div>
 
-  <!-- FILES -->
+  <!-- FILE LIST -->
   <div class="mt-6">
-    <div class="flex justify-between items-center mb-3">
-      <h2 class="font-bold">Files <span id="count" class="text-sm opacity-70"></span></h2>
-      <button id="zipBtn" class="bg-emerald-500 px-3 py-1 rounded disabled:opacity-40" disabled>
-        Download ZIP
-      </button>
-    </div>
+    <h2 class="font-bold mb-3">
+      Files <span id="count" class="text-sm opacity-70"></span>
+    </h2>
 
     <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
   </div>
@@ -106,31 +88,32 @@ if (!token) location.href = 'index.html';
 document.getElementById('profileToken').textContent = 'token: ' + token;
 
 /* =========================
-   UI HELPERS
+   UI REFS
 ========================= */
+const uploadBox = document.getElementById('uploadBox');
+const fileInput = document.getElementById('fileInput');
 const fileGrid = document.getElementById('fileGrid');
 const countEl = document.getElementById('count');
 const msgEl = document.getElementById('msg');
 const progressWrap = document.getElementById('progressWrap');
 const progressFill = document.getElementById('progressFill');
 const statusText = document.getElementById('statusText');
-const zipBtn = document.getElementById('zipBtn');
 
 let files = [];
-let selected = new Set();
 
-function showMsg(t, type='info'){
-  msgEl.textContent = t;
-  msgEl.className = 'p-3 rounded mb-4 text-sm ' +
+function showMsg(text, type='info'){
+  msgEl.textContent = text;
+  msgEl.className =
+    'p-3 rounded mb-4 text-sm ' +
     (type==='success' ? 'bg-emerald-500/20 text-emerald-300' :
      type==='error' ? 'bg-red-500/20 text-red-300' :
      'bg-white/10');
   msgEl.classList.remove('hidden');
-  setTimeout(()=>msgEl.classList.add('hidden'), 3500);
+  setTimeout(()=>msgEl.classList.add('hidden'), 3000);
 }
 
 /* =========================
-   LIST FILES (TOKEN ONLY)
+   FETCH FILES (TOKEN ONLY)
 ========================= */
 async function fetchFiles(){
   try {
@@ -148,39 +131,73 @@ function renderFiles(){
   fileGrid.innerHTML = '';
 
   if (!files.length) {
-    fileGrid.innerHTML = '<div class="col-span-full text-center opacity-60">No files yet</div>';
-    zipBtn.disabled = true;
+    fileGrid.innerHTML =
+      '<div class="col-span-full text-center opacity-60">No files uploaded yet</div>';
     return;
   }
 
   files.forEach(f => {
-    const el = document.createElement('div');
-    el.className = 'file-item p-4 bg-white/10 rounded cursor-pointer';
-    el.dataset.id = f.public_id;
-    el.innerHTML = `
-      <div class="font-semibold truncate">${f.public_id.split('/').pop()}</div>
-      <div class="text-xs opacity-60">${(f.bytes/1024/1024).toFixed(2)} MB</div>
+    const name = f.public_id.split('/').pop();
+    const size = (f.bytes / 1024 / 1024).toFixed(2);
+
+    const card = document.createElement('div');
+    card.className = 'bg-white/10 rounded p-4';
+
+    card.innerHTML = `
+      <div class="font-semibold truncate">${name}</div>
+      <div class="text-xs opacity-60 mb-3">${size} MB</div>
+
+      <div class="flex gap-2">
+        <a
+          href="${f.secure_url}"
+          download
+          class="flex-1 text-center py-1 rounded bg-emerald-500/80 hover:bg-emerald-500"
+        >
+          Download
+        </a>
+        <button
+          class="flex-1 py-1 rounded bg-red-500/70 hover:bg-red-500"
+          data-id="${f.public_id}"
+        >
+          Delete
+        </button>
+      </div>
     `;
-    el.onclick = () => {
-      selected.has(f.public_id) ? selected.delete(f.public_id) : selected.add(f.public_id);
-      el.classList.toggle('selected');
-      zipBtn.disabled = selected.size === 0;
-    };
-    fileGrid.appendChild(el);
+
+    card.querySelector('button').onclick = () =>
+      deleteFile(f.public_id);
+
+    fileGrid.appendChild(card);
   });
 }
 
 /* =========================
-   UPLOAD
+   UPLOAD (CLICK + DROP)
 ========================= */
-document.getElementById('pickBtn').onclick = () =>
-  document.getElementById('fileInput').click();
+uploadBox.onclick = () => fileInput.click();
 
-document.getElementById('fileInput').onchange = e =>
+uploadBox.ondragover = e => {
+  e.preventDefault();
+  uploadBox.classList.add('bg-indigo-900/30');
+};
+
+uploadBox.ondragleave = () =>
+  uploadBox.classList.remove('bg-indigo-900/30');
+
+uploadBox.ondrop = e => {
+  e.preventDefault();
+  uploadBox.classList.remove('bg-indigo-900/30');
+  uploadFiles([...e.dataTransfer.files]);
+};
+
+fileInput.onchange = e =>
   uploadFiles([...e.target.files]);
 
 async function uploadFiles(list){
+  if (!list.length) return;
+
   progressWrap.classList.remove('hidden');
+
   for (let i=0;i<list.length;i++){
     const fd = new FormData();
     fd.append('file', list[i]);
@@ -195,33 +212,40 @@ async function uploadFiles(list){
       body:fd
     });
   }
+
   progressWrap.classList.add('hidden');
   showMsg('Upload complete','success');
   fetchFiles();
 }
 
 /* =========================
-   ZIP DOWNLOAD
+   DELETE FILE
 ========================= */
-zipBtn.onclick = async () => {
-  const zip = new JSZip();
-  for (const f of files.filter(x=>selected.has(x.public_id))){
-    const r = await fetch(f.secure_url);
-    zip.file(f.public_id.split('/').pop(), await r.blob());
+async function deleteFile(publicId){
+  if (!confirm('Delete this file permanently?')) return;
+
+  try {
+    const res = await fetch('/api/delete-file', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ public_id: publicId })
+    });
+    if (!res.ok) throw new Error();
+    showMsg('File deleted','success');
+    fetchFiles();
+  } catch {
+    showMsg('Delete failed','error');
   }
-  const blob = await zip.generateAsync({type:'blob'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `qloud-${token}.zip`;
-  a.click();
-};
+}
 
 /* =========================
    INIT
 ========================= */
 fetchFiles();
-document.getElementById('logoutBtn').onclick = () => location.href = 'index.html';
+document.getElementById('logoutBtn').onclick =
+  () => location.href = 'index.html';
 </script>
 
 </body>
+ 
 </html>
