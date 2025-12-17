@@ -228,7 +228,6 @@ card.innerHTML = `
 
     // Delete handler
     card.querySelector('button').onclick = () => {
-      if (confirm('Delete this file?')) {
         deleteFile(f.public_id);
       }
     };
@@ -283,7 +282,6 @@ async function uploadFiles(list){
   }
 
   progressWrap.classList.add('hidden');
-  showMsg('Upload complete','success');
   fetchFiles();
 }
 
@@ -299,7 +297,6 @@ async function deleteFile(publicId){
       body: JSON.stringify({ public_id: publicId })
     });
     if (!res.ok) throw new Error();
-    showMsg('File deleted','success');
     fetchFiles();
   } catch {
     showMsg('Delete failed','error');
