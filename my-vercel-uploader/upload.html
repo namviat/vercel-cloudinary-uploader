@@ -224,7 +224,7 @@ function renderFiles(){
 
     // DELETE
     card.querySelector('.delete-btn').onclick = () => {
-      if (confirm('Delete this file?')) deleteFile(f.public_id);
+      deleteFile(f.public_id);
     };
 
     fileGrid.appendChild(card);
@@ -295,8 +295,7 @@ async function deleteFile(publicId){
       body: JSON.stringify({ public_id: publicId })
     });
     if (!res.ok) throw new Error();
-    showMsg('File deleted','success');
-    fetchFiles();
+     fetchFiles();
   } catch {
     showMsg('Delete failed','error');
   }
