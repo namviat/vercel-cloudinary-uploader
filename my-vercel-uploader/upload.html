@@ -1,4 +1,4 @@
-<!doctype html>
+<!doctype html> 
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -7,190 +7,328 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
-:root{
-  --panel: rgba(255,255,255,0.04);
-  --accent-from:#6366f1;
-  --accent-to:#06b6d4;
+  body {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  }
+  .file-item.selected {
+    border: 2px solid rgba(59,130,246,1);
+    box-shadow: 0 0 10px rgba(59,130,246,.35);
+  }
+  .file-card {
+  position: relative;
 }
-body{font-family:Inter,system-ui}
-.panel{background:var(--panel)}
-.file-card{position:relative}
-.file-actions{position:absolute;top:10px;right:10px;opacity:0;transition:.2s}
-.file-card:hover .file-actions{opacity:1}
-.file-action-btn{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.06)}
-.theme-toggle{background:rgba(255,255,255,.06);border-radius:999px;padding:6px 10px}
-body.light{background:#f8fafc;color:#0f172a}
-body.light .panel{background:rgba(2,6,23,.04)}
+
+.file-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.file-card:hover .file-actions {
+  opacity: 1;
+}
+
+.file-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.55);
+  cursor: pointer;
+}
+
+.file-action-btn:hover {
+  background: rgba(0,0,0,0.8);
+}
+
 </style>
 </head>
+  
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
 
-<body class="bg-slate-900 text-slate-100 min-h-screen p-6" id="bodyRoot">
+<div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-<!-- LEFT SIDEBAR -->
-<aside class="panel rounded-xl p-4 space-y-6 sticky top-6">
-  <div class="flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div id="avatarPreview" class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-600 to-cyan-400 flex items-center justify-center font-bold">U</div>
-      <div>
-        <div id="profileName" class="font-semibold">Profile</div>
-        <div id="profileToken" class="text-xs opacity-70">token:</div>
-      </div>
-    </div>
-
-    <div class="relative">
-      <button id="threeDotMenuBtnLeft"><i data-lucide="more-vertical"></i></button>
-      <div id="threeDotMenuLeft" class="hidden absolute right-0 mt-2 w-44 bg-slate-800 rounded shadow">
-        <button id="menuMergeLeft" class="w-full px-4 py-2 text-left hover:bg-white/10">Merge token</button>
-        <button id="menuDeleteLeft" class="w-full px-4 py-2 text-left hover:bg-red-600/20">Delete token</button>
-        <button id="menuLogoutLeft" class="w-full px-4 py-2 text-left hover:bg-white/10">Logout</button>
-      </div>
+<!-- SIDEBAR -->
+<div class="lg:col-span-1 bg-white/5 backdrop-blur p-4 rounded-xl">
+  <div class="flex items-center gap-3">
+    <div id="avatarPreview" class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-xl">U</div>
+    <div>
+      <div id="profileName" class="font-semibold">Profile</div>
+      <div id="profileToken" class="text-xs opacity-70"></div>
     </div>
   </div>
 
-  <div>
-    <div class="text-xs opacity-70 mb-1">Storage (global)</div>
-    <div class="h-2 bg-white/10 rounded">
-      <div id="storageFill" class="h-2 rounded bg-gradient-to-r from-indigo-500 to-cyan-400" style="width:0%"></div>
-    </div>
-    <div id="storageText" class="text-xs opacity-60 mt-1">—</div>
-  </div>
+  <button id="logoutBtn" class="mt-6 w-full py-2 rounded bg-white/5 hover:bg-white/10">
+    Log out
+  </button>
+</div>
 
-  <div class="space-y-2">
-    <button id="openMerge" class="w-full py-2 bg-white/5 rounded">Merge tokens</button>
-    <button id="openDelete" class="w-full py-2 bg-white/5 rounded">Delete token</button>
-    <button id="logoutBtn" class="w-full py-2 bg-red-600/20 rounded">Log out</button>
-  </div>
-</aside>
+<!-- MAIN -->
+<div class="lg:col-span-3 bg-white/5 backdrop-blur p-6 rounded-xl">
 
-<!-- MAIN FILE AREA -->
-<main class="lg:col-span-3 panel rounded-xl p-6 relative">
+  <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
 
-  <!-- Theme toggle -->
-  <div class="absolute top-6 right-6">
-    <button id="themeToggle" class="theme-toggle flex gap-2 items-center">
-      <i data-lucide="sun"></i>
-      <i data-lucide="moon"></i>
-    </button>
-  </div>
-
-  <!-- Upload -->
-  <div id="uploadBox" class="border-2 border-dashed border-indigo-500 rounded-xl p-10 text-center cursor-pointer">
-    <input id="fileInput" type="file" multiple hidden>
+  <!-- UPLOAD BOX (CLICK + DRAG) -->
+  <div
+    id="uploadBox"
+    class="border-2 border-dashed border-indigo-500 rounded-xl p-10 text-center cursor-pointer
+           bg-indigo-900/10 hover:bg-indigo-900/20 transition"
+  >
+    <input id="fileInput" type="file" multiple hidden />
     <div class="text-5xl mb-2">☁️</div>
-    <div class="font-bold">Click or drag & drop files</div>
-    <div class="text-sm opacity-70">Private to this token</div>
+    <div class="font-bold">Click or drag & drop files here</div>
+    <div class="text-sm opacity-70 mt-1">Files are private to this token</div>
   </div>
 
-  <!-- Progress -->
+  <!-- PROGRESS -->
   <div id="progressWrap" class="hidden mt-4">
-    <div class="h-2 bg-white/10 rounded">
-      <div id="progressFill" class="h-2 rounded bg-gradient-to-r from-indigo-500 to-cyan-400"></div>
+    <div class="w-full bg-white/10 rounded-full h-2">
+      <div id="progressFill" class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"></div>
     </div>
     <div id="statusText" class="text-xs opacity-70 mt-1"></div>
   </div>
 
-  <!-- Files -->
+  <!-- FILE LIST -->
   <div class="mt-6">
-    <div class="flex justify-between mb-3">
-      <h2 class="font-bold">Files <span id="count" class="opacity-60"></span></h2>
-      <button id="refreshBtn" class="px-3 py-1 bg-white/5 rounded">Refresh</button>
-    </div>
+    <h2 class="font-bold mb-3">
+      Files <span id="count" class="text-sm opacity-70"></span>
+    </h2>
+
     <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
   </div>
 
-</main>
+</div>
 </div>
 
 <script>
-const CLOUD_NAME='dzvz7kzin';
-const UPLOAD_PRESET='mycloud_unsigned';
-const BASE_FOLDER='mycloud';
-const token=new URLSearchParams(location.search).get('token');
-if(!token)location.href='index.html';
-profileToken.textContent='token: '+token;
-
-const uploadBox=fileInput.parentElement;
-let files=[];
-
-/* THEME */
-const bodyRoot=document.getElementById('bodyRoot');
-const saved=localStorage.getItem('qloud_theme')||'dark';
-if(saved==='light')bodyRoot.classList.add('light');
-themeToggle.onclick=()=>{
-  bodyRoot.classList.toggle('light');
-  localStorage.setItem('qloud_theme',bodyRoot.classList.contains('light')?'light':'dark');
-};
-
-/* THREE DOT */
-threeDotMenuBtnLeft.onclick=()=>threeDotMenuLeft.classList.toggle('hidden');
-menuLogoutLeft.onclick=()=>location.href='index.html';
-menuMergeLeft.onclick=()=>openMerge();
-menuDeleteLeft.onclick=()=>openDelete();
-
-openMerge.onclick=openMerge;
-openDelete.onclick=openDelete;
-logoutBtn.onclick=()=>location.href='index.html';
-
-/* FILE OPS (unchanged) */
-uploadBox.onclick=()=>fileInput.click();
-uploadBox.ondragover=e=>e.preventDefault();
-uploadBox.ondrop=e=>{e.preventDefault();uploadFiles([...e.dataTransfer.files])};
-fileInput.onchange=e=>uploadFiles([...e.target.files]);
-
-async function uploadFiles(list){
-  progressWrap.classList.remove('hidden');
-  for(let i=0;i<list.length;i++){
-    const fd=new FormData();
-    fd.append('file',list[i]);
-    fd.append('upload_preset',UPLOAD_PRESET);
-    fd.append('folder',`${BASE_FOLDER}/${token}`);
-    statusText.textContent=`Uploading ${list[i].name}`;
-    progressFill.style.width=((i+1)/list.length*100)+'%';
-    await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,{method:'POST',body:fd});
-  }
-  progressWrap.classList.add('hidden');
-  fetchFiles();
+/* =========================
+   FILE ICONS
+========================= */
+function getFileIcon(publicId) {
+  const ext = publicId.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
+  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
+  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
+  if (['pdf'].includes(ext)) return 'file-text';
+  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
+  return 'file';
 }
 
+/* =========================
+   CONFIG
+========================= */
+const CLOUD_NAME = 'dzvz7kzin';
+const UPLOAD_PRESET = 'mycloud_unsigned';
+const BASE_FOLDER = 'mycloud';
+
+const token = new URLSearchParams(location.search).get('token');
+if (!token) location.href = 'index.html';
+
+document.getElementById('profileToken').textContent = 'token: ' + token;
+
+/* =========================
+   UI REFS
+========================= */
+const uploadBox = document.getElementById('uploadBox');
+const fileInput = document.getElementById('fileInput');
+const fileGrid = document.getElementById('fileGrid');
+const countEl = document.getElementById('count');
+const msgEl = document.getElementById('msg');
+const progressWrap = document.getElementById('progressWrap');
+const progressFill = document.getElementById('progressFill');
+const statusText = document.getElementById('statusText');
+
+let files = [];
+
+/* =========================
+   HELPERS
+========================= */
+function showMsg(text, type='info'){
+  msgEl.textContent = text;
+  msgEl.className =
+    'p-3 rounded mb-4 text-sm ' +
+    (type==='success' ? 'bg-emerald-500/20 text-emerald-300' :
+     type==='error' ? 'bg-red-500/20 text-red-300' :
+     'bg-white/10');
+  msgEl.classList.remove('hidden');
+  setTimeout(()=>msgEl.classList.add('hidden'), 3000);
+}
+
+/* =========================
+   FETCH FILES
+========================= */
 async function fetchFiles(){
-  const res=await fetch(`/api/list-files?token=${token}`);
-  const data=await res.json();
-  files=data.resources||[];
-  renderFiles();
+  try {
+    const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
+    const data = await res.json();
+    files = (data.resources || []).sort(
+      (a,b)=> new Date(b.created_at) - new Date(a.created_at)
+    );
+    renderFiles();
+  } catch {
+    showMsg('Failed to load files','error');
+  }
 }
 
+/* =========================
+   RENDER FILES
+========================= */
 function renderFiles(){
-  count.textContent=`(${files.length})`;
-  fileGrid.innerHTML='';
-  files.forEach(f=>{
-    const card=document.createElement('div');
-    card.className='file-card bg-white/5 rounded-xl p-4';
-    card.innerHTML=`
-      <div class="file-actions flex gap-2">
-        <button class="file-action-btn download">⬇</button>
-        <button class="file-action-btn delete">🗑</button>
+  countEl.textContent = `(${files.length})`;
+  fileGrid.innerHTML = '';
+
+  if (!files.length) {
+    fileGrid.innerHTML =
+      '<div class="col-span-full text-center opacity-60">No files uploaded yet</div>';
+    return;
+  }
+
+  files.forEach(f => {
+    const name = f.public_id.split('/').pop();
+    const size = (f.bytes / 1024 / 1024).toFixed(2);
+    const icon = getFileIcon(f.public_id);
+
+    const card = document.createElement('div');
+    card.className = 'file-card bg-white/10 rounded-xl p-4 hover:bg-white/15 transition';
+
+    card.innerHTML = `
+      <div class="file-actions">
+        <button class="file-action-btn text-emerald-400 download-btn">
+          <i data-lucide="download"></i>
+        </button>
+        <button class="file-action-btn text-red-400 delete-btn">
+          <i data-lucide="trash-2"></i>
+        </button>
       </div>
-      <div class="truncate font-semibold">${f.public_id.split('/').pop()}</div>
+
+      <div class="text-4xl mb-2 text-indigo-300">
+        <i data-lucide="${icon}"></i>
+      </div>
+      <div class="font-semibold truncate">${name}</div>
+      <div class="text-xs opacity-60 mt-1">${size} MB</div>
     `;
-    card.querySelector('.download').onclick=()=>window.open(f.secure_url);
-    card.querySelector('.delete').onclick=()=>deleteFile(f.public_id);
+
+    // DOWNLOAD
+    card.querySelector('.download-btn').onclick = () =>
+      forceDownload(f.secure_url, name);
+
+    // DELETE
+    card.querySelector('.delete-btn').onclick = () => {
+      deleteFile(f.public_id);
+    };
+
     fileGrid.appendChild(card);
   });
+
+  lucide.createIcons();
 }
 
-async function deleteFile(id){
-  await fetch('/api/delete-file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_id:id})});
+/* =========================
+   UPLOAD
+========================= */
+uploadBox.addEventListener('click', () => fileInput.click());
+
+uploadBox.addEventListener('dragover', e => {
+  e.preventDefault();
+  uploadBox.classList.add('bg-indigo-900/30');
+});
+
+uploadBox.addEventListener('dragleave', () =>
+  uploadBox.classList.remove('bg-indigo-900/30')
+);
+
+uploadBox.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadBox.classList.remove('bg-indigo-900/30');
+  uploadFiles([...e.dataTransfer.files]);
+});
+
+fileInput.onchange = e => uploadFiles([...e.target.files]);
+
+async function uploadFiles(list){
+  if (!list.length) return;
+  progressWrap.classList.remove('hidden');
+
+  for (let i=0;i<list.length;i++){
+    const fd = new FormData();
+    fd.append('file', list[i]);
+    fd.append('upload_preset', UPLOAD_PRESET);
+    fd.append('folder', `${BASE_FOLDER}/${token}`);
+
+    statusText.textContent = `Uploading ${list[i].name}`;
+    progressFill.style.width = ((i+1)/list.length*100)+'%';
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,
+      { method:'POST', body:fd }
+    );
+
+    if (!res.ok) {
+      showMsg(`Upload failed: ${list[i].name}`,'error');
+      break;
+    }
+  }
+
+  progressWrap.classList.add('hidden');
+  progressFill.style.width = '0%';
   fetchFiles();
 }
 
-refreshBtn.onclick=fetchFiles;
+/* =========================
+   DELETE
+========================= */
+async function deleteFile(publicId){
+  try {
+    const res = await fetch('/api/delete-file', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ public_id: publicId })
+    });
+    if (!res.ok) throw new Error();
+     fetchFiles();
+  } catch {
+    showMsg('Delete failed','error');
+  }
+}
+
+/* =========================
+   FORCE DOWNLOAD
+========================= */
+async function forceDownload(url, filename) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  } catch {
+    showMsg('Download failed','error');
+  }
+}
+
+/* =========================
+   INIT
+========================= */
 fetchFiles();
-lucide.createIcons();
+document.getElementById('logoutBtn').onclick =
+  () => location.href = 'index.html';
 </script>
 
 </body>
+ 
 </html>
