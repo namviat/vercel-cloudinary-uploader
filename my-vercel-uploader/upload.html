@@ -59,47 +59,68 @@
 
 <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-<!-- SIDEBAR -->
-<div class="lg:col-span-1 bg-white/5 backdrop-blur p-4 rounded-xl">
-  <div class="flex items-center gap-3">
-    <div id="avatarPreview" class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-xl">U</div>
-    <div class="flex-1">
-      <div id="profileName" class="font-semibold">Profile</div>
-      <div id="profileToken" class="text-xs opacity-70"></div>
+  <!-- SIDEBAR -->
+  <div class="lg:col-span-1 bg-white/5 backdrop-blur p-4 rounded-xl">
+    <div class="flex items-center gap-3">
+      <div id="avatarPreview" class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-xl">U</div>
+      <div class="flex-1">
+        <div id="profileName" class="font-semibold">Profile</div>
+        <div id="profileToken" class="text-xs opacity-70"></div>
+      </div>
+
+      <!-- 3-dot menu moved to sidebar (profile area) -->
+      <div class="relative">
+        <button id="menuBtn" class="px-3 py-2 rounded bg-white/5 hover:bg-white/10">
+          <i data-lucide="more-vertical"></i>
+        </button>
+        <div id="menuDropdown" class="hidden absolute right-0 mt-2 w-44 bg-slate-800 rounded shadow-lg p-2 z-20">
+          <button id="menuMerge" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Token Merge</button>
+          <button id="menuDelete" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Delete Token</button>
+          <button id="menuLogout" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Log out</button>
+        </div>
+      </div>
     </div>
 
-  <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
-
-  <!-- UPLOAD BOX (CLICK + DRAG) -->
-  <div
-    id="uploadBox"
-    class="border-2 border-dashed border-indigo-500 rounded-xl p-10 text-center cursor-pointer
-           bg-indigo-900/10 hover:bg-indigo-900/20 transition"
-  >
-    <input id="fileInput" type="file" multiple hidden />
-    <div class="text-5xl mb-2">☁️</div>
-    <div class="font-bold">Click or drag & drop files here</div>
-    <div class="text-sm opacity-70 mt-1">Files are private to this token</div>
+    <button id="logoutBtn" class="mt-6 w-full py-2 rounded bg-white/5 hover:bg-white/10">
+      Log out
+    </button>
   </div>
 
-  <!-- PROGRESS -->
-  <div id="progressWrap" class="hidden mt-4">
-    <div class="w-full bg-white/10 rounded-full h-2">
-      <div id="progressFill" class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+  <!-- MAIN (only file operations here) -->
+  <div class="lg:col-span-3 bg-white/5 backdrop-blur p-6 rounded-xl">
+
+    <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
+
+    <!-- UPLOAD BOX (CLICK + DRAG) -->
+    <div
+      id="uploadBox"
+      class="border-2 border-dashed border-indigo-500 rounded-xl p-10 text-center cursor-pointer
+             bg-indigo-900/10 hover:bg-indigo-900/20 transition"
+    >
+      <input id="fileInput" type="file" multiple hidden />
+      <div class="text-5xl mb-2">☁️</div>
+      <div class="font-bold">Click or drag & drop files here</div>
+      <div class="text-sm opacity-70 mt-1">Files are private to this token</div>
     </div>
-    <div id="statusText" class="text-xs opacity-70 mt-1"></div>
+
+    <!-- PROGRESS -->
+    <div id="progressWrap" class="hidden mt-4">
+      <div class="w-full bg-white/10 rounded-full h-2">
+        <div id="progressFill" class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+      </div>
+      <div id="statusText" class="text-xs opacity-70 mt-1"></div>
+    </div>
+
+    <!-- FILE LIST -->
+    <div class="mt-6">
+      <h2 class="font-bold mb-3">
+        Files <span id="count" class="text-sm opacity-70"></span>
+      </h2>
+
+      <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </div>
+
   </div>
-
-  <!-- FILE LIST -->
-  <div class="mt-6">
-    <h2 class="font-bold mb-3">
-      Files <span id="count" class="text-sm opacity-70"></span>
-    </h2>
-
-    <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
-  </div>
-
-</div>
 </div>
 
 <!-- TOKEN MERGE MODAL -->
@@ -169,7 +190,7 @@ const BASE_FOLDER = 'mycloud';
 const token = new URLSearchParams(location.search).get('token');
 if (!token) location.href = 'index.html';
 
-// display token in multiple places
+// display token in sidebar
 document.getElementById('profileToken').textContent = 'token: ' + token;
 document.getElementById('mergeDest').textContent = token;
 
@@ -546,10 +567,6 @@ menuDelete.addEventListener('click', ()=>{
       location.href = 'index.html';
     } else showMsg('Delete failed','error');
   }).catch(e=>{ console.error(e); showMsg('Delete failed','error'); });
-});
-
-
-
 });
 
 </script>
