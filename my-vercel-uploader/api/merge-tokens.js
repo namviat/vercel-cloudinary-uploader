@@ -40,16 +40,19 @@ module.exports = async (req, res) => {
         });
 
         for (const file of result.resources) {
-          const filename = file.public_id.split('/').pop();
-          const newPublicId = `${BASE_FOLDER}/${dest}/${filename}`;
+  const filename = file.public_id.split('/').pop();
+  const newPublicId = `${BASE_FOLDER}/${dest}/${filename}`;
 
-          // 2️⃣ Move file to destination token
-          await cloudinary.uploader.rename(
-            file.public_id,
-            newPublicId,
-            { overwrite: true }
-          );
-        }
+  await cloudinary.uploader.rename(
+    file.public_id,
+    newPublicId,
+    {
+      resource_type: 'raw',
+      overwrite: true
+    }
+  );
+}
+
 
         nextCursor = result.next_cursor;
       } while (nextCursor);
