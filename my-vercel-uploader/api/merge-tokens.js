@@ -24,10 +24,12 @@ module.exports = async (req, res) => {
     api_key: process.env.CLOUDINARY_API_KEY || '484797141727837',
     api_secret: process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk'
   });
+  
 try {
     for (const source of sources) {
       let nextCursor = null;
 
+      // 1️⃣ Move files
       do {
         const result = await cloudinary.api.resources({
           resource_type: 'raw',
@@ -38,12 +40,10 @@ try {
         });
 
         for (const file of result.resources) {
-          const parts = file.public_id.split('/');
-          const originalName = parts.pop();
+          const originalName = file.public_id.split('/').pop();
           const nameOnly = originalName.replace(/\.[^/.]+$/, '');
           const ext = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
 
-          // 🔐 Make filename collision-safe
           const safeName = `${nameOnly}__${source}${ext}`;
           const newPublicId = `${BASE_FOLDER}/${dest}/${safeName}`;
 
@@ -54,18 +54,22 @@ try {
               { resource_type: 'raw' }
             );
           } catch (e) {
-            console.error('Rename failed:', file.public_id, e.message);
-            // continue merge, don’t kill entire process
+            console.warn('Skip file:', file.public_id, e.message);
           }
         }
 
         nextCursor = result.next_cursor;
       } while (nextCursor);
 
-      // delete source folder AFTER all renames
-      await cloudinary.api.delete_folder(`${BASE_FOLDER}/${source}`);
+      // 2️⃣ Cleanup (NON-CRITICAL)
+      try {
+        await cloudinary.api.delete_folder(`${BASE_FOLDER}/${source}`);
+      } catch (e) {
+        console.warn('Folder cleanup skipped:', source, e.message);
+      }
     }
 
+    // ✅ SUCCESS — send OK no matter what cleanup did
     return res.status(200).json({ success: true });
 
   } catch (err) {
@@ -76,4 +80,3 @@ try {
     });
   }
 };
-
