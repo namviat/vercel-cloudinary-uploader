@@ -15,20 +15,33 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Token required' });
   }
 
-  cloudinary.config({
-     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dzvz7kzin',
-    api_key: process.env.CLOUDINARY_API_KEY || '484797141727837',
-    api_secret: process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk'
-  });
 
   try {
-    // 1️⃣ Delete all files under token
-    await cloudinary.api.delete_resources_by_prefix(
-      `${BASE_FOLDER}/${token}/`,
-      { resource_type: 'raw', type: 'upload' }
-    );
+    let nextCursor = null;
 
-    // 2️⃣ Delete token folder (cosmetic)
+    // 1️⃣ LIST + DELETE ALL RAW FILES (SAFE WAY)
+    do {
+      const result = await cloudinary.api.resources({
+        resource_type: 'raw',
+        type: 'upload',
+        prefix: `${BASE_FOLDER}/${token}/`,
+        max_results: 500,
+        next_cursor: nextCursor
+      });
+
+      if (result.resources.length > 0) {
+        const publicIds = result.resources.map(r => r.public_id);
+
+        await cloudinary.api.delete_resources(publicIds, {
+          resource_type: 'raw',
+          type: 'upload'
+        });
+      }
+
+      nextCursor = result.next_cursor;
+    } while (nextCursor);
+
+    // 2️⃣ DELETE FOLDER (COSMETIC)
     try {
       await cloudinary.api.delete_folder(`${BASE_FOLDER}/${token}`);
     } catch (_) {}
