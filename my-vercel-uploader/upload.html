@@ -10,98 +10,128 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
-  body {
-    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  /* small theme tweaks inspired by Dashmin */
+  :root{
+    --panel: rgba(255,255,255,0.04);
+    --glass: rgba(255,255,255,0.03);
+    --accent-from: #6366f1; /* indigo-500 */
+    --accent-to: #06b6d4;   /* cyan-400 */
   }
-  .file-item.selected {
-    border: 2px solid rgba(59,130,246,1);
-    box-shadow: 0 0 10px rgba(59,130,246,.35);
-  }
-  .file-card {
-  position: relative;
-}
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
 
-.file-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 6px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
+  /* file card hover actions (polished) */
+  .file-card { position: relative; overflow: hidden; }
+  .file-actions { position: absolute; top: 10px; right: 10px; display:flex; gap:8px; opacity:0; transform: translateY(-6px); transition: all .18s ease; }
+  .file-card:hover .file-actions { opacity:1; transform: translateY(0); }
 
-.file-card:hover .file-actions {
-  opacity: 1;
-}
+  .three-dot { width: 40px; height: 40px; display:flex; align-items:center; justify-content:center; border-radius:8px; }
 
-.file-action-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.55);
-  cursor: pointer;
-}
+  /* subtle animated cloud (CSS only) */
+  .cloud { width:72px; height:40px; position:relative; filter: drop-shadow(0 8px 18px rgba(2,6,23,0.6)); }
+  .cloud:before, .cloud:after { content:''; position:absolute; background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); border-radius:999px; }
+  .cloud:before { width:52px; height:36px; left:8px; top:2px; opacity:.95; }
+  .cloud:after  { width:36px; height:36px; right:2px; top:-4px; opacity:.95; }
+  .cloud .base { position:absolute; left:0; right:0; bottom:-6px; height:22px; border-radius:14px; background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); }
 
-.file-action-btn:hover {
-  background: rgba(0,0,0,0.8);
-}
-
+  /* small responsive adjustments */
+  @media (max-width:1024px){ .lg\:col-span-3 { grid-column: 1 / -1; } }
 </style>
 </head>
-  
+
 <body class="bg-slate-900 text-slate-100 min-h-screen p-6">
 
-<div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
 <!-- SIDEBAR -->
-<div class="lg:col-span-1 bg-white/5 backdrop-blur p-4 rounded-xl">
+<div class="lg:col-span-1 bg-[var(--panel)] backdrop-blur p-4 rounded-xl sticky top-6">
   <div class="flex items-center gap-3">
-    <div id="avatarPreview" class="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-xl">U</div>
+    <div id="avatarPreview" class="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-cyan-400 flex items-center justify-center text-xl ring-1 ring-white/5">U</div>
     <div>
       <div id="profileName" class="font-semibold">Profile</div>
-      <div id="profileToken" class="text-xs opacity-70"></div>
+      <div id="profileToken" class="text-xs opacity-70">token: —</div>
     </div>
   </div>
 
-  <button id="logoutBtn" class="mt-6 w-full py-2 rounded bg-white/5 hover:bg-white/10">
-    Log out
-  </button>
+  <div class="mt-6">
+    <div class="text-xs opacity-60 mb-2">Storage (global)</div>
+    <div class="w-full bg-white/6 rounded-full h-3 overflow-hidden">
+      <div id="storageFill" class="h-3 rounded-full" style="width:0%; background: linear-gradient(90deg,var(--accent-from),var(--accent-to));"></div>
+    </div>
+    <div id="storageText" class="text-xs opacity-70 mt-2">Used 0 GB of 50 GB</div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-2 gap-2">
+    <button id="openProfileEdit" class="py-2 rounded bg-white/5 hover:bg-white/10">Edit Profile</button>
+    <button id="logoutBtn" class="py-2 rounded bg-red-600/10 hover:bg-red-600/20">Log out</button>
+  </div>
+
+  <div class="mt-6 text-xs opacity-60">Quick actions</div>
+  <div class="mt-2 flex gap-2">
+    <button id="openMerge" class="flex-1 py-2 rounded bg-white/5 hover:bg-white/10 text-sm">Merge tokens</button>
+    <button id="openDelete" class="py-2 px-3 rounded bg-white/5 hover:bg-white/10 text-sm">Delete</button>
+  </div>
 </div>
 
 <!-- MAIN -->
-<div class="lg:col-span-3 bg-white/5 backdrop-blur p-6 rounded-xl">
+<div class="lg:col-span-3 bg-[var(--panel)] backdrop-blur p-6 rounded-xl">
 
   <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
 
+  <!-- HEADER -->
+  <div class="flex items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="cloud" aria-hidden>
+          <div class="base"></div>
+        </div>
+        <div>
+          <div class="text-lg font-bold">Qloud</div>
+          <div class="text-xs opacity-60">Token: <span id="headerToken">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div id="totalTokens" class="text-sm opacity-70">Tokens: 0</div>
+
+      <button id="threeDotMenuBtn" class="three-dot bg-white/3 hover:bg-white/5" aria-haspopup="true">
+        <i data-lucide="more-vertical"></i>
+      </button>
+
+      <div id="threeDotMenu" class="hidden origin-top-right absolute right-8 mt-12 w-48 bg-slate-800/80 border border-white/6 rounded shadow-lg py-1">
+        <button id="menuMerge" class="w-full text-left px-4 py-2 text-sm hover:bg-white/3">Token merge</button>
+        <button id="menuDelete" class="w-full text-left px-4 py-2 text-sm hover:bg-red-600/10">Delete token</button>
+        <button id="menuLogout" class="w-full text-left px-4 py-2 text-sm hover:bg-white/3">Log out</button>
+      </div>
+    </div>
+  </div>
+
   <!-- UPLOAD BOX (CLICK + DRAG) -->
-  <div
-    id="uploadBox"
-    class="border-2 border-dashed border-indigo-500 rounded-xl p-10 text-center cursor-pointer
-           bg-indigo-900/10 hover:bg-indigo-900/20 transition"
-  >
+  <div id="uploadBox" class="border-2 border-dashed border-indigo-500 rounded-xl p-8 text-center cursor-pointer bg-gradient-to-b from-white/2 to-transparent hover:from-white/4 transition">
     <input id="fileInput" type="file" multiple hidden />
     <div class="text-5xl mb-2">☁️</div>
-    <div class="font-bold">Click or drag & drop files here</div>
+    <div class="font-bold text-lg">Click or drag & drop files here</div>
     <div class="text-sm opacity-70 mt-1">Files are private to this token</div>
+    <div class="mt-4 text-xs opacity-60">Max single file size: 2 GB (client-side limits depend on browser)</div>
   </div>
 
   <!-- PROGRESS -->
   <div id="progressWrap" class="hidden mt-4">
-    <div class="w-full bg-white/10 rounded-full h-2">
-      <div id="progressFill" class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+    <div class="w-full bg-white/10 rounded-full h-3">
+      <div id="progressFill" class="h-3 rounded-full" style="width:0%; background: linear-gradient(90deg,var(--accent-from),var(--accent-to));"></div>
     </div>
     <div id="statusText" class="text-xs opacity-70 mt-1"></div>
   </div>
 
   <!-- FILE LIST -->
   <div class="mt-6">
-    <h2 class="font-bold mb-3">
-      Files <span id="count" class="text-sm opacity-70"></span>
-    </h2>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-bold">Files <span id="count" class="text-sm opacity-70"></span></h2>
+      <div class="flex items-center gap-2">
+        <input id="filter" placeholder="Filter files..." class="bg-white/5 rounded px-3 py-1 text-sm" />
+        <button id="refreshBtn" class="py-1 px-3 rounded bg-white/5">Refresh</button>
+      </div>
+    </div>
 
     <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
   </div>
@@ -109,36 +139,50 @@
 </div>
 </div>
 
-<script>
-/* =========================
-   FILE ICONS
-========================= */
-function getFileIcon(publicId) {
-  const ext = publicId.split('.').pop().toLowerCase();
-  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
-  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
-  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
-  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
-  if (['pdf'].includes(ext)) return 'file-text';
-  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
-  return 'file';
-}
+<!-- MERGE MODAL -->
+<div id="mergeModal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden">
+  <div class="w-full max-w-lg bg-slate-900 rounded-xl p-6">
+    <h3 class="font-bold mb-2">Merge tokens into this token</h3>
+    <p class="text-sm opacity-60 mb-4">Files from source tokens will be moved to this token and source tokens will be deleted.</p>
 
+    <div id="sourcesList" class="space-y-2 mb-3">
+      <div class="flex gap-2"><input class="flex-1 bg-white/5 rounded px-3 py-2" placeholder="source token" /><button class="px-3 py-2 rounded bg-white/5">Add</button></div>
+    </div>
+
+    <div class="flex gap-2 justify-end">
+      <button id="mergeCancel" class="py-2 px-3 rounded bg-white/5">Cancel</button>
+      <button id="mergeConfirm" class="py-2 px-4 rounded bg-indigo-600">Merge</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div id="deleteModal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden">
+  <div class="w-full max-w-md bg-slate-900 rounded-xl p-6">
+    <h3 class="font-bold mb-2 text-red-400">Delete token and all data</h3>
+    <p class="text-sm opacity-60 mb-4">This action is irreversible. Enter the token to confirm deletion.</p>
+    <input id="deleteConfirmInput" class="w-full bg-white/5 rounded px-3 py-2 mb-4" placeholder="Type token to confirm" />
+    <div class="flex gap-2 justify-end">
+      <button id="deleteCancel" class="py-2 px-3 rounded bg-white/5">Cancel</button>
+      <button id="deleteConfirmBtn" class="py-2 px-4 rounded bg-red-600">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
 /* =========================
    CONFIG
 ========================= */
 const CLOUD_NAME = 'dzvz7kzin';
 const UPLOAD_PRESET = 'mycloud_unsigned';
 const BASE_FOLDER = 'mycloud';
-
 const token = new URLSearchParams(location.search).get('token');
 if (!token) location.href = 'index.html';
 
 document.getElementById('profileToken').textContent = 'token: ' + token;
+document.getElementById('headerToken').textContent = token;
 
-/* =========================
-   UI REFS
-========================= */
+/* UI refs */
 const uploadBox = document.getElementById('uploadBox');
 const fileInput = document.getElementById('fileInput');
 const fileGrid = document.getElementById('fileGrid');
@@ -155,25 +199,45 @@ let files = [];
 ========================= */
 function showMsg(text, type='info'){
   msgEl.textContent = text;
-  msgEl.className =
-    'p-3 rounded mb-4 text-sm ' +
-    (type==='success' ? 'bg-emerald-500/20 text-emerald-300' :
-     type==='error' ? 'bg-red-500/20 text-red-300' :
-     'bg-white/10');
+  msgEl.className = 'p-3 rounded mb-4 text-sm ' + (type==='success' ? 'bg-emerald-500/20 text-emerald-300' : type==='error' ? 'bg-red-500/20 text-red-300' : 'bg-white/10');
   msgEl.classList.remove('hidden');
-  setTimeout(()=>msgEl.classList.add('hidden'), 3000);
+  setTimeout(()=>msgEl.classList.add('hidden'), 3500);
+}
+
+function getFileIcon(publicId){
+  const ext = publicId.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
+  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
+  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
+  if (['pdf'].includes(ext)) return 'file-text';
+  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
+  return 'file';
 }
 
 /* =========================
-   FETCH FILES
+   FETCH STATS + FILES
 ========================= */
+async function fetchStats(){
+  try{
+    const res = await fetch('/api/stats');
+    if (!res.ok) return;
+    const data = await res.json();
+    // expected: { total_bytes, quota_bytes, token_count }
+    const usedGB = (data.total_bytes/1024/1024/1024).toFixed(2);
+    const quotaGB = (data.quota_bytes/1024/1024/1024).toFixed(2);
+    const pct = Math.min(100, (data.total_bytes / data.quota_bytes * 100) || 0);
+    document.getElementById('storageFill').style.width = pct + '%';
+    document.getElementById('storageText').textContent = `Used ${usedGB} GB of ${quotaGB} GB`;
+    document.getElementById('totalTokens').textContent = 'Tokens: ' + (data.token_count || 0);
+  }catch(e){/* silently fail */}
+}
+
 async function fetchFiles(){
   try {
     const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
     const data = await res.json();
-    files = (data.resources || []).sort(
-      (a,b)=> new Date(b.created_at) - new Date(a.created_at)
-    );
+    files = (data.resources || []).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
     renderFiles();
   } catch {
     showMsg('Failed to load files','error');
@@ -188,8 +252,7 @@ function renderFiles(){
   fileGrid.innerHTML = '';
 
   if (!files.length) {
-    fileGrid.innerHTML =
-      '<div class="col-span-full text-center opacity-60">No files uploaded yet</div>';
+    fileGrid.innerHTML = '<div class="col-span-full text-center opacity-60">No files uploaded yet</div>';
     return;
   }
 
@@ -199,33 +262,36 @@ function renderFiles(){
     const icon = getFileIcon(f.public_id);
 
     const card = document.createElement('div');
-    card.className = 'file-card bg-white/10 rounded-xl p-4 hover:bg-white/15 transition';
+    card.className = 'file-card bg-white/4 rounded-xl p-4 hover:bg-white/6 transition';
+
+    // preview for images
+    let preview = '';
+    if (icon === 'image') {
+      preview = `<img src="${f.secure_url}" alt="${name}" class="w-full h-36 object-cover rounded-md mb-3">`;
+    } else {
+      preview = `<div class="text-4xl mb-2 text-indigo-300"><i data-lucide="${icon}"></i></div>`;
+    }
 
     card.innerHTML = `
       <div class="file-actions">
-        <button class="file-action-btn text-emerald-400 download-btn">
+        <button class="file-action-btn text-emerald-400 download-btn" title="Download">
           <i data-lucide="download"></i>
         </button>
-        <button class="file-action-btn text-red-400 delete-btn">
+        <button class="file-action-btn text-red-400 delete-btn" title="Delete">
           <i data-lucide="trash-2"></i>
         </button>
       </div>
 
-      <div class="text-4xl mb-2 text-indigo-300">
-        <i data-lucide="${icon}"></i>
-      </div>
+      ${preview}
       <div class="font-semibold truncate">${name}</div>
-      <div class="text-xs opacity-60 mt-1">${size} MB</div>
-    `;
+      <div class="text-xs opacity-60 mt-1">${size} MB • ${new Date(f.created_at).toLocaleString()}</div>
+      `;
 
     // DOWNLOAD
-    card.querySelector('.download-btn').onclick = () =>
-      forceDownload(f.secure_url, name);
+    card.querySelector('.download-btn').onclick = () => forceDownload(f.secure_url, name);
 
     // DELETE
-    card.querySelector('.delete-btn').onclick = () => {
-      deleteFile(f.public_id);
-    };
+    card.querySelector('.delete-btn').onclick = () => deleteFile(f.public_id);
 
     fileGrid.appendChild(card);
   });
@@ -237,22 +303,9 @@ function renderFiles(){
    UPLOAD
 ========================= */
 uploadBox.addEventListener('click', () => fileInput.click());
-
-uploadBox.addEventListener('dragover', e => {
-  e.preventDefault();
-  uploadBox.classList.add('bg-indigo-900/30');
-});
-
-uploadBox.addEventListener('dragleave', () =>
-  uploadBox.classList.remove('bg-indigo-900/30')
-);
-
-uploadBox.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadBox.classList.remove('bg-indigo-900/30');
-  uploadFiles([...e.dataTransfer.files]);
-});
-
+uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('bg-indigo-900/30'); });
+uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('bg-indigo-900/30'));
+uploadBox.addEventListener('drop', e => { e.preventDefault(); uploadBox.classList.remove('bg-indigo-900/30'); uploadFiles([...e.dataTransfer.files]); });
 fileInput.onchange = e => uploadFiles([...e.target.files]);
 
 async function uploadFiles(list){
@@ -268,10 +321,7 @@ async function uploadFiles(list){
     statusText.textContent = `Uploading ${list[i].name}`;
     progressFill.style.width = ((i+1)/list.length*100)+'%';
 
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`,
-      { method:'POST', body:fd }
-    );
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method:'POST', body:fd });
 
     if (!res.ok) {
       showMsg(`Upload failed: ${list[i].name}`,'error');
@@ -281,6 +331,7 @@ async function uploadFiles(list){
 
   progressWrap.classList.add('hidden');
   progressFill.style.width = '0%';
+  fetchStats();
   fetchFiles();
 }
 
@@ -289,13 +340,10 @@ async function uploadFiles(list){
 ========================= */
 async function deleteFile(publicId){
   try {
-    const res = await fetch('/api/delete-file', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ public_id: publicId })
-    });
+    const res = await fetch('/api/delete-file', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ public_id: publicId }) });
     if (!res.ok) throw new Error();
-     fetchFiles();
+    fetchStats();
+    fetchFiles();
   } catch {
     showMsg('Delete failed','error');
   }
@@ -322,13 +370,67 @@ async function forceDownload(url, filename) {
 }
 
 /* =========================
-   INIT
+   TOKEN ACTIONS (UI only)
 ========================= */
+const threeDotBtn = document.getElementById('threeDotMenuBtn');
+const threeDotMenu = document.getElementById('threeDotMenu');
+threeDotBtn.addEventListener('click', (e)=>{ threeDotMenu.classList.toggle('hidden'); });
+
+document.getElementById('menuLogout').onclick = () => location.href='index.html';
+document.getElementById('menuMerge').onclick = () => openMergeModal();
+document.getElementById('menuDelete').onclick = () => openDeleteModal();
+
+/* MERGE modal (basic UI) */
+function openMergeModal(){ document.getElementById('mergeModal').classList.remove('hidden'); }
+document.getElementById('mergeCancel').onclick = () => document.getElementById('mergeModal').classList.add('hidden');
+
+document.getElementById('mergeConfirm').onclick = async ()=>{
+  // gather source tokens from input fields inside #sourcesList (this is simple demo UI)
+  const inputs = Array.from(document.querySelectorAll('#sourcesList input'));
+  const sources = inputs.map(i=>i.value.trim()).filter(Boolean);
+  if (!sources.length){ showMsg('Add at least one source token','error'); return; }
+  try{
+    const res = await fetch('/api/merge-tokens', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ destination: token, sources }) });
+    if (!res.ok) throw new Error();
+    showMsg('Merge started','success');
+    document.getElementById('mergeModal').classList.add('hidden');
+    fetchFiles(); fetchStats();
+  }catch(e){ showMsg('Merge failed','error'); }
+}
+
+/* DELETE modal */
+function openDeleteModal(){ document.getElementById('deleteModal').classList.remove('hidden'); }
+document.getElementById('deleteCancel').onclick = () => document.getElementById('deleteModal').classList.add('hidden');
+
+document.getElementById('deleteConfirmBtn').onclick = async ()=>{
+  const val = document.getElementById('deleteConfirmInput').value.trim();
+  if (val !== token){ showMsg('Token mismatch. Type the token exactly.','error'); return; }
+  try{
+    const res = await fetch('/api/delete-token', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token }) });
+    if (!res.ok) throw new Error();
+    showMsg('Token deleted','success');
+    // redirect home
+    setTimeout(()=> location.href='index.html', 900);
+  }catch(e){ showMsg('Delete failed','error'); }
+}
+
+/* misc */
+document.getElementById('refreshBtn').onclick = () => { fetchFiles(); fetchStats(); };
+
+document.getElementById('openMerge').onclick = openMergeModal;
+document.getElementById('openDelete').onclick = openDeleteModal;
+
+document.getElementById('logoutBtn').onclick = () => location.href = 'index.html';
+
+document.getElementById('openProfileEdit').onclick = ()=>{
+  const newName = prompt('Set display name (this is client-side demo)');
+  if (newName) document.getElementById('profileName').textContent = newName;
+};
+
+/* INIT */
+fetchStats();
 fetchFiles();
-document.getElementById('logoutBtn').onclick =
-  () => location.href = 'index.html';
 </script>
 
 </body>
- 
 </html>
