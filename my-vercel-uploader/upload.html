@@ -1,9 +1,9 @@
-<!doctype html> 
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Qloud — Upload</title>
+<title>Qloud — Upload (with Token Merge)</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
@@ -18,38 +18,40 @@
     box-shadow: 0 0 10px rgba(59,130,246,.35);
   }
   .file-card {
-  position: relative;
-}
+    position: relative;
+  }
 
-.file-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 6px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
+  .file-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
 
-.file-card:hover .file-actions {
-  opacity: 1;
-}
+  .file-card:hover .file-actions {
+    opacity: 1;
+  }
 
-.file-action-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.55);
-  cursor: pointer;
-}
+  .file-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.55);
+    cursor: pointer;
+  }
 
-.file-action-btn:hover {
-  background: rgba(0,0,0,0.8);
-}
+  .file-action-btn:hover {
+    background: rgba(0,0,0,0.8);
+  }
 
+  /* simple modal backdrop */
+  .modal-backdrop { background: rgba(2,6,23,0.6); }
 </style>
 </head>
   
@@ -74,6 +76,33 @@
 
 <!-- MAIN -->
 <div class="lg:col-span-3 bg-white/5 backdrop-blur p-6 rounded-xl">
+
+  <!-- TOP BAR inside main: token (readonly), profile (editable), 3-dot menu -->
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-4">
+      <div class="px-3 py-2 bg-white/5 rounded flex items-center gap-3">
+        <div class="text-xs opacity-60">Token</div>
+        <div id="topToken" class="font-semibold truncate max-w-xs"></div>
+        <button id="copyTokenBtn" class="ml-2 text-xs opacity-70">Copy</button>
+      </div>
+
+      <div class="px-3 py-2 bg-white/5 rounded flex items-center gap-3">
+        <div id="topProfileNameDisplay" class="font-medium">Profile</div>
+        <button id="editProfileBtn" class="text-xs opacity-70">Edit</button>
+      </div>
+    </div>
+
+    <div class="relative">
+      <button id="menuBtn" class="px-3 py-2 rounded bg-white/5 hover:bg-white/10"> 
+        <i data-lucide="more-vertical"></i>
+      </button>
+      <div id="menuDropdown" class="hidden absolute right-0 mt-2 w-44 bg-slate-800 rounded shadow-lg p-2">
+        <button id="menuMerge" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Token Merge</button>
+        <button id="menuDelete" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Delete Token</button>
+        <button id="menuLogout" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Log out</button>
+      </div>
+    </div>
+  </div>
 
   <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
 
@@ -109,6 +138,48 @@
 </div>
 </div>
 
+<!-- TOKEN MERGE MODAL -->
+<div id="mergeModal" class="fixed inset-0 hidden items-center justify-center modal-backdrop z-50">
+  <div class="bg-slate-900/95 border border-white/5 rounded-xl w-full max-w-2xl p-6">
+    <div class="flex items-start justify-between">
+      <h3 class="text-lg font-semibold">Merge tokens into current token</h3>
+      <button id="closeMerge" class="text-xs opacity-60">Close</button>
+    </div>
+
+    <div class="mt-4 space-y-3">
+      <div>
+        <div class="text-xs opacity-60">Destination (current token)</div>
+        <div id="mergeDest" class="font-medium bg-white/5 p-2 rounded mt-1"></div>
+      </div>
+
+      <div>
+        <label class="text-xs opacity-60">Search tokens to add as <strong>sources</strong></label>
+        <div class="flex gap-2 mt-2">
+          <input id="tokenSearchInput" class="flex-1 p-2 rounded bg-white/5" placeholder="Search tokens by id or name" />
+          <button id="tokenSearchBtn" class="px-3 py-2 rounded bg-indigo-600">Search</button>
+        </div>
+        <div id="searchResults" class="mt-2 grid gap-2"></div>
+      </div>
+
+      <div>
+        <div class="text-xs opacity-60">Selected sources</div>
+        <div id="selectedSources" class="mt-2 space-y-2"></div>
+      </div>
+
+      <div>
+        <label class="text-xs opacity-60">Type <strong>MERGE</strong> to confirm</label>
+        <input id="mergeConfirmInput" class="w-full p-2 rounded bg-white/5 mt-1" placeholder="Type MERGE to enable" />
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <button id="startMergeBtn" class="px-4 py-2 rounded bg-red-600 opacity-60" disabled>Merge now</button>
+      </div>
+
+      <div id="mergeStatus" class="text-sm opacity-70"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =========================
    FILE ICONS
@@ -134,7 +205,10 @@ const BASE_FOLDER = 'mycloud';
 const token = new URLSearchParams(location.search).get('token');
 if (!token) location.href = 'index.html';
 
+// display token in multiple places
 document.getElementById('profileToken').textContent = 'token: ' + token;
+document.getElementById('topToken').textContent = token;
+document.getElementById('mergeDest').textContent = token;
 
 /* =========================
    UI REFS
@@ -175,7 +249,8 @@ async function fetchFiles(){
       (a,b)=> new Date(b.created_at) - new Date(a.created_at)
     );
     renderFiles();
-  } catch {
+  } catch (err) {
+    console.error(err);
     showMsg('Failed to load files','error');
   }
 }
@@ -296,7 +371,8 @@ async function deleteFile(publicId){
     });
     if (!res.ok) throw new Error();
      fetchFiles();
-  } catch {
+  } catch (err) {
+    console.error(err);
     showMsg('Delete failed','error');
   }
 }
@@ -316,7 +392,8 @@ async function forceDownload(url, filename) {
     a.click();
     a.remove();
     URL.revokeObjectURL(a.href);
-  } catch {
+  } catch (err) {
+    console.error(err);
     showMsg('Download failed','error');
   }
 }
@@ -327,6 +404,207 @@ async function forceDownload(url, filename) {
 fetchFiles();
 document.getElementById('logoutBtn').onclick =
   () => location.href = 'index.html';
+
+/* =========================
+   MENU AND MERGE UI LOGIC
+========================= */
+const menuBtn = document.getElementById('menuBtn');
+const menuDropdown = document.getElementById('menuDropdown');
+const menuMerge = document.getElementById('menuMerge');
+const menuDelete = document.getElementById('menuDelete');
+const menuLogout = document.getElementById('menuLogout');
+
+menuBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  menuDropdown.classList.toggle('hidden');
+});
+
+document.addEventListener('click', ()=> menuDropdown.classList.add('hidden'));
+
+menuLogout.addEventListener('click', ()=> location.href='index.html');
+
+// Merge modal elements
+const mergeModal = document.getElementById('mergeModal');
+const closeMerge = document.getElementById('closeMerge');
+const tokenSearchInput = document.getElementById('tokenSearchInput');
+const tokenSearchBtn = document.getElementById('tokenSearchBtn');
+const searchResults = document.getElementById('searchResults');
+const selectedSourcesEl = document.getElementById('selectedSources');
+const mergeConfirmInput = document.getElementById('mergeConfirmInput');
+const startMergeBtn = document.getElementById('startMergeBtn');
+const mergeStatus = document.getElementById('mergeStatus');
+
+let selectedSources = [];
+
+menuMerge.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  openMergeModal();
+});
+
+closeMerge.addEventListener('click', closeMergeModal);
+
+function openMergeModal(){
+  selectedSources = [];
+  renderSelectedSources();
+  tokenSearchInput.value = '';
+  searchResults.innerHTML = '';
+  mergeConfirmInput.value = '';
+  startMergeBtn.disabled = true;
+  startMergeBtn.classList.add('opacity-60');
+  mergeStatus.textContent = '';
+  mergeModal.classList.remove('hidden');
+  // ensure destination displays current token
+  document.getElementById('mergeDest').textContent = token;
+}
+
+function closeMergeModal(){
+  mergeModal.classList.add('hidden');
+}
+
+// simple search - calls backend endpoint /api/search-tokens?q=...
+async function searchTokens(query){
+  if (!query) return [];
+  try {
+    const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error('search failed');
+    const data = await res.json();
+    return data.tokens || [];
+  } catch (err){
+    console.error(err);
+    showMsg('Token search failed','error');
+    return [];
+  }
+}
+
+tokenSearchBtn.addEventListener('click', async ()=>{
+  const q = tokenSearchInput.value.trim();
+  searchResults.innerHTML = 'Searching...';
+  const hits = await searchTokens(q);
+  if (!hits.length) {
+    searchResults.innerHTML = '<div class="opacity-60 text-sm">No tokens found</div>';
+    return;
+  }
+  searchResults.innerHTML = '';
+  hits.forEach(t => {
+    // t should contain at least { id, name }
+    const row = document.createElement('div');
+    row.className = 'flex items-center justify-between p-2 bg-white/5 rounded';
+    row.innerHTML = `
+      <div class="truncate">${t.id}${t.name ? ' — '+t.name : ''}</div>
+      <button class="px-2 py-1 rounded bg-indigo-600 add-source-btn">Add</button>
+    `;
+    row.querySelector('.add-source-btn').onclick = ()=> addSource(t.id);
+    searchResults.appendChild(row);
+  });
+});
+
+function addSource(id){
+  if (!id || id === token) return showMsg('Cannot add current token as source','error');
+  if (selectedSources.includes(id)) return showMsg('Already added','info');
+  selectedSources.push(id);
+  renderSelectedSources();
+}
+
+function removeSource(id){
+  selectedSources = selectedSources.filter(x=>x!==id);
+  renderSelectedSources();
+}
+
+function renderSelectedSources(){
+  selectedSourcesEl.innerHTML = '';
+  if (!selectedSources.length) {
+    selectedSourcesEl.innerHTML = '<div class="opacity-60 text-sm">No sources selected</div>';
+    return;
+  }
+  selectedSources.forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'flex items-center justify-between p-2 bg-white/5 rounded';
+    item.innerHTML = `<div class="truncate">${s}</div><button class="px-2 py-1 rounded bg-red-600 remove-source-btn">Remove</button>`;
+    item.querySelector('.remove-source-btn').onclick = ()=> removeSource(s);
+    selectedSourcesEl.appendChild(item);
+  });
+}
+
+mergeConfirmInput.addEventListener('input', ()=>{
+  const val = mergeConfirmInput.value.trim();
+  if (val === 'MERGE' && selectedSources.length>0) {
+    startMergeBtn.disabled = false;
+    startMergeBtn.classList.remove('opacity-60');
+  } else {
+    startMergeBtn.disabled = true;
+    startMergeBtn.classList.add('opacity-60');
+  }
+});
+
+startMergeBtn.addEventListener('click', async ()=>{
+  if (!selectedSources.length) return showMsg('Add at least one source token','error');
+  if (mergeConfirmInput.value.trim() !== 'MERGE') return showMsg('Type MERGE to confirm','error');
+
+  // make POST to backend
+  try {
+    startMergeBtn.disabled = true;
+    mergeStatus.textContent = 'Merging... this may take a while';
+
+    const res = await fetch('/api/merge-tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dest: token, sources: selectedSources })
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt || 'merge failed');
+    }
+
+    const result = await res.json();
+    mergeStatus.textContent = 'Merge successful';
+    showMsg('Tokens merged successfully','success');
+    closeMergeModal();
+    // refresh files to reflect newly moved files
+    fetchFiles();
+  } catch (err) {
+    console.error(err);
+    mergeStatus.textContent = 'Merge failed: '+(err.message||'');
+    showMsg('Merge failed','error');
+    startMergeBtn.disabled = false;
+  }
+});
+
+// delete token button - simple flow (UI only)
+menuDelete.addEventListener('click', ()=>{
+  if (!confirm('Delete this token and all its files? This is irreversible.')) return;
+  // call backend to delete token and files
+  fetch('/api/delete-token', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ token })
+  }).then(r=>{
+    if (r.ok) {
+      showMsg('Token deleted','success');
+      location.href = 'index.html';
+    } else showMsg('Delete failed','error');
+  }).catch(e=>{ console.error(e); showMsg('Delete failed','error'); });
+});
+
+// copy token
+document.getElementById('copyTokenBtn').addEventListener('click', ()=>{
+  navigator.clipboard.writeText(token).then(()=> showMsg('Token copied','success'))
+});
+
+// edit profile (very small UI flow - front-end) - you said token immutable so profile stored in DB
+const editProfileBtn = document.getElementById('editProfileBtn');
+editProfileBtn.addEventListener('click', ()=>{
+  const name = prompt('Enter display name for this token (will be saved)');
+  if (!name) return;
+  // call backend to save profile metadata
+  fetch('/api/save-profile', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ token, name })
+  }).then(r=>{
+    if (r.ok) { document.getElementById('topProfileNameDisplay').textContent = name; showMsg('Profile saved','success'); }
+    else showMsg('Save failed','error');
+  }).catch(e=>{ console.error(e); showMsg('Save failed','error'); });
+});
+
 </script>
 
 </body>
