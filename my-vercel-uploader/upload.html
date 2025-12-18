@@ -201,21 +201,43 @@
     <div id="deleteStatus" class="mt-3 text-sm opacity-70"></div>
   </div>
 </div>
+  
   <!--  TOKEN SEARCH MODAL -->
-  <div id="browseModal"
+  
+<div id="browseModal"
  class="fixed inset-0 hidden items-center justify-center modal-backdrop z-50">
 
   <div class="bg-slate-900 w-full max-w-4xl rounded-xl p-6">
-    <h3 class="text-lg font-semibold">Browse Token Files</h3>
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-semibold">Browse Tokens</h3>
+      <button id="closeBrowse" class="text-xs opacity-60">Close</button>
+    </div>
 
+    <!-- TOKEN SEARCH -->
     <input id="browseTokenInput"
-      class="w-full mt-3 p-2 rounded bg-white/5"
+      class="w-full mt-4 p-2 rounded bg-white/5"
       placeholder="Search token" />
 
-    <div id="browseFiles"
-      class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4"></div>
+    <!-- TOKEN LIST -->
+    <div id="tokenResults"
+      class="mt-4 space-y-2"></div>
+
+    <!-- FILE LIST -->
+    <div id="tokenFiles"
+      class="hidden mt-6">
+      <div class="flex items-center justify-between mb-2">
+        <h4 id="activeTokenLabel"
+            class="font-semibold"></h4>
+        <button id="backToTokens"
+                class="text-xs opacity-60">← Back</button>
+      </div>
+
+      <div id="browseFiles"
+        class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+    </div>
   </div>
 </div>
+
 
 
 <script>
@@ -690,51 +712,102 @@ deleteTokenBtn.addEventListener('click', async () => {
 });
 
   //TOKEN SEARCH LOGIC
-
-  const browseModal = document.getElementById('browseModal');
-const browseInput = document.getElementById('browseTokenInput');
+const browseModal = document.getElementById('browseModal');
+const closeBrowse = document.getElementById('closeBrowse');
+const browseTokenInput = document.getElementById('browseTokenInput');
+const tokenResults = document.getElementById('tokenResults');
+const tokenFilesWrap = document.getElementById('tokenFiles');
 const browseFiles = document.getElementById('browseFiles');
+const activeTokenLabel = document.getElementById('activeTokenLabel');
+const backToTokens = document.getElementById('backToTokens');
 
 menuBrowse.onclick = () => {
-  browseInput.value = '';
-  browseFiles.innerHTML = '';
   browseModal.classList.remove('hidden');
+  browseTokenInput.value = '';
+  tokenResults.innerHTML = '';
+  tokenFilesWrap.classList.add('hidden');
 };
 
-let browseTimer = null;
-browseInput.addEventListener('input', () => {
-  clearTimeout(browseTimer);
-  browseTimer = setTimeout(loadTokenFiles, 300);
+closeBrowse.onclick = () => browseModal.classList.add('hidden');
+
+backToTokens.onclick = () => {
+  tokenFilesWrap.classList.add('hidden');
+  tokenResults.classList.remove('hidden');
+};
+let browseSearchTimer = null;
+
+browseTokenInput.addEventListener('input', () => {
+  clearTimeout(browseSearchTimer);
+
+  const q = browseTokenInput.value.trim();
+  if (!q) {
+    tokenResults.innerHTML = '';
+    return;
+  }
+
+  browseSearchTimer = setTimeout(async () => {
+    tokenResults.innerHTML =
+      '<div class="opacity-60 text-sm">Searching tokens…</div>';
+
+    const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+
+    if (!data.tokens || !data.tokens.length) {
+      tokenResults.innerHTML =
+        '<div class="opacity-60 text-sm">No tokens found</div>';
+      return;
+    }
+
+    tokenResults.innerHTML = '';
+    data.tokens.forEach(t => {
+      const row = document.createElement('div');
+      row.className =
+        'p-3 bg-white/5 rounded cursor-pointer hover:bg-white/10';
+
+      row.textContent = t.id;
+
+      row.onclick = () => openTokenFiles(t.id);
+
+      tokenResults.appendChild(row);
+    });
+  }, 300);
 });
+async function openTokenFiles(tokenId) {
+  tokenResults.classList.add('hidden');
+  tokenFilesWrap.classList.remove('hidden');
+  activeTokenLabel.textContent = `Files in ${tokenId}`;
+  browseFiles.innerHTML = 'Loading files…';
 
-async function loadTokenFiles() {
-  const t = browseInput.value.trim();
-  if (!t) return browseFiles.innerHTML = '';
-
-  browseFiles.innerHTML = 'Loading...';
-  const res = await fetch(`/api/list-token-files?token=${t}`);
+  const res = await fetch(`/api/list-token-files?token=${tokenId}`);
   const data = await res.json();
 
   browseFiles.innerHTML = '';
+
+  if (!data.files || !data.files.length) {
+    browseFiles.innerHTML =
+      '<div class="opacity-60 text-sm col-span-full">No files</div>';
+    return;
+  }
+
   data.files.forEach(f => {
     const name = f.public_id.split('/').pop();
 
-    const div = document.createElement('div');
-    div.className = 'bg-white/5 p-3 rounded';
-    div.innerHTML = `
+    const card = document.createElement('div');
+    card.className = 'bg-white/5 p-3 rounded';
+
+    card.innerHTML = `
       <div class="truncate">${name}</div>
       <button class="mt-2 px-2 py-1 bg-indigo-600 rounded text-xs">
         +
       </button>
     `;
 
-    div.querySelector('button').onclick = () =>
-      copyFile(f, t);
+    card.querySelector('button').onclick =
+      () => copyFile(f, tokenId);
 
-    browseFiles.appendChild(div);
+    browseFiles.appendChild(card);
   });
 }
-
 async function copyFile(file, fromToken) {
   await fetch('/api/copy-file', {
     method: 'POST',
@@ -750,7 +823,6 @@ async function copyFile(file, fromToken) {
   showMsg('File copied', 'success');
   fetchFiles();
 }
-
 
 </script>
 
