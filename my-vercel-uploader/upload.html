@@ -77,21 +77,8 @@
 <!-- MAIN -->
 <div class="lg:col-span-3 bg-white/5 backdrop-blur p-6 rounded-xl">
 
-  <!-- TOP BAR inside main: token (readonly), profile (editable), 3-dot menu -->
-  <div class="flex items-center justify-between mb-4">
-    <div class="flex items-center gap-4">
-      <div class="px-3 py-2 bg-white/5 rounded flex items-center gap-3">
-        <div class="text-xs opacity-60">Token</div>
-        <div id="topToken" class="font-semibold truncate max-w-xs"></div>
-        <button id="copyTokenBtn" class="ml-2 text-xs opacity-70">Copy</button>
-      </div>
-
-      <div class="px-3 py-2 bg-white/5 rounded flex items-center gap-3">
-        <div id="topProfileNameDisplay" class="font-medium">Profile</div>
-        <button id="editProfileBtn" class="text-xs opacity-70">Edit</button>
-      </div>
-    </div>
-
+  <!-- TOP BAR inside main: minimal (files only workspace) -->
+  <div class="flex items-center justify-end mb-4">
     <div class="relative">
       <button id="menuBtn" class="px-3 py-2 rounded bg-white/5 hover:bg-white/10"> 
         <i data-lucide="more-vertical"></i>
@@ -103,8 +90,6 @@
       </div>
     </div>
   </div>
-
-  <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
 
   <!-- UPLOAD BOX (CLICK + DRAG) -->
   <div
@@ -585,13 +570,11 @@ menuDelete.addEventListener('click', ()=>{
   }).catch(e=>{ console.error(e); showMsg('Delete failed','error'); });
 });
 
-// copy token
-document.getElementById('copyTokenBtn').addEventListener('click', ()=>{
-  navigator.clipboard.writeText(token).then(()=> showMsg('Token copied','success'))
-});
+// token copy removed – menu is now under profile only
 
-// edit profile (very small UI flow - front-end) - you said token immutable so profile stored in DB
-const editProfileBtn = document.getElementById('editProfileBtn');
+
+// profile edit removed from main workspace
+
 editProfileBtn.addEventListener('click', ()=>{
   const name = prompt('Enter display name for this token (will be saved)');
   if (!name) return;
