@@ -18,14 +18,14 @@ module.exports = async (req, res) => {
   if (sources.includes(dest)) {
     return res.status(400).json({ error: 'Source token cannot be destination' });
   }
-  
+
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dzvz7kzin',
     api_key: process.env.CLOUDINARY_API_KEY || '484797141727837',
     api_secret: process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk'
   });
-  
-try {
+
+  try {
     for (const source of sources) {
       let nextCursor = null;
 
@@ -44,7 +44,6 @@ try {
           const nameOnly = originalName.replace(/\.[^/.]+$/, '');
           const ext = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
 
-          // collision-safe filename
           const safeName = `${nameOnly}__${source}${ext}`;
           const newPublicId = `${BASE_FOLDER}/${dest}/${safeName}`;
 
@@ -62,15 +61,28 @@ try {
         nextCursor = result.next_cursor;
       } while (nextCursor);
 
-      // 2️⃣ FORCE DELETE ALL FILES FROM SOURCE TOKEN
-      try {
-        await cloudinary.api.delete_resources_by_prefix(
-          `${BASE_FOLDER}/${source}/`,
-          { resource_type: 'raw', type: 'upload' }
-        );
-      } catch (e) {
-        console.warn('Resource cleanup skipped:', source, e.message);
-      }
+      // 2️⃣ LIST & DELETE ALL REMAINING RAW FILES (CRITICAL FIX)
+      nextCursor = null;
+      do {
+        const result = await cloudinary.api.resources({
+          resource_type: 'raw',
+          type: 'upload',
+          prefix: `${BASE_FOLDER}/${source}/`,
+          max_results: 500,
+          next_cursor: nextCursor
+        });
+
+        if (result.resources.length > 0) {
+          const publicIds = result.resources.map(r => r.public_id);
+
+          await cloudinary.api.delete_resources(publicIds, {
+            resource_type: 'raw',
+            type: 'upload'
+          });
+        }
+
+        nextCursor = result.next_cursor;
+      } while (nextCursor);
 
       // 3️⃣ DELETE SOURCE FOLDER (COSMETIC)
       try {
@@ -80,7 +92,7 @@ try {
       }
     }
 
-    // ✅ ALWAYS RETURN SUCCESS IF MOVE WORKED
+    // ✅ SUCCESS
     return res.status(200).json({ success: true });
 
   } catch (err) {
