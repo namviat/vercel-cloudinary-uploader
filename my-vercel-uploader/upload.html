@@ -67,39 +67,6 @@
       <div id="profileName" class="font-semibold">Profile</div>
       <div id="profileToken" class="text-xs opacity-70"></div>
     </div>
-    <div class="relative">
-      <button id="menuBtn" class="px-2 py-2 rounded bg-white/10 hover:bg-white/20">
-        <i data-lucide="more-vertical"></i>
-      </button>
-      <div id="menuDropdown" class="hidden absolute right-0 mt-2 w-44 bg-slate-800 rounded shadow-lg p-2 z-20">
-        <button id="menuMerge" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Token Merge</button>
-        <button id="menuDelete" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Delete Token</button>
-        <button id="menuLogout" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Log out</button>
-      </div>
-    </div>
-  </div>
-
-  <button id="logoutBtn" class="mt-6 w-full py-2 rounded bg-white/5 hover:bg-white/10">
-    Log out
-  </button>
-</div>
-
-<!-- MAIN -->
-<div class="lg:col-span-3 bg-white/5 backdrop-blur p-6 rounded-xl">
-
-  
-
-    <div class="relative">
-      <button id="menuBtn" class="px-3 py-2 rounded bg-white/5 hover:bg-white/10"> 
-        <i data-lucide="more-vertical"></i>
-      </button>
-      <div id="menuDropdown" class="hidden absolute right-0 mt-2 w-44 bg-slate-800 rounded shadow-lg p-2">
-        <button id="menuMerge" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Token Merge</button>
-        <button id="menuDelete" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Delete Token</button>
-        <button id="menuLogout" class="w-full text-left px-3 py-2 rounded hover:bg-white/5">Log out</button>
-      </div>
-    </div>
-  </div>
 
   <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
 
@@ -203,7 +170,6 @@ const token = new URLSearchParams(location.search).get('token');
 if (!token) location.href = 'index.html';
 
 // display token in multiple places
-document.getElementById('profileToken').textContent = 'token: ' + token;
 document.getElementById('profileToken').textContent = 'token: ' + token;
 document.getElementById('mergeDest').textContent = token;
 
@@ -583,17 +549,7 @@ menuDelete.addEventListener('click', ()=>{
 });
 
 
-editProfileBtn.addEventListener('click', ()=>{
-  const name = prompt('Enter display name for this token (will be saved)');
-  if (!name) return;
-  // call backend to save profile metadata
-  fetch('/api/save-profile', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ token, name })
-  }).then(r=>{
-    if (r.ok) { document.getElementById('topProfileNameDisplay').textContent = name; showMsg('Profile saved','success'); }
-    else showMsg('Save failed','error');
-  }).catch(e=>{ console.error(e); showMsg('Save failed','error'); });
+
 });
 
 </script>
