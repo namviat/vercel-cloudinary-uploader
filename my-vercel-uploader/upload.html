@@ -9,29 +9,51 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
+  /* ---------- Theme tokens ---------- */
   :root{
     --panel: rgba(255,255,255,0.04);
     --glass: rgba(255,255,255,0.03);
     --accent-from: #6366f1; /* indigo-500 */
     --accent-to: #06b6d4;   /* cyan-400 */
+    --muted: rgba(255,255,255,0.65);
   }
-  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+
+  /* ---------- Base ---------- */
+  html,body{height:100%;}
+  body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial; }
+  .panel{ background: var(--panel); }
+
+  /* ---------- Left panel ---------- */
+  .left-panel { padding:18px; border-radius:14px; }
+  .left-panel .avatar { width:48px; height:48px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-weight:600; }
+  .left-panel .muted { color: rgba(255,255,255,0.7); font-size:13px; }
+  .left-panel .action-btn { width:100%; text-align:left; padding:10px 12px; border-radius:10px; }
+
+  /* ---------- File card ---------- */
   .file-card { position: relative; overflow: hidden; }
   .file-actions { position: absolute; top: 10px; right: 10px; display:flex; gap:8px; opacity:0; transform: translateY(-6px); transition: all .18s ease; }
   .file-card:hover .file-actions { opacity:1; transform: translateY(0); }
   .file-action-btn { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.03); }
-  .three-dot { width: 40px; height: 40px; display:flex; align-items:center; justify-content:center; border-radius:8px; }
-  .cloud { width:72px; height:40px; position:relative; filter: drop-shadow(0 8px 18px rgba(2,6,23,0.6)); }
-  .cloud:before, .cloud:after { content:''; position:absolute; background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); border-radius:999px; }
-  .cloud:before { width:52px; height:36px; left:8px; top:2px; opacity:.95; }
-  .cloud:after  { width:36px; height:36px; right:2px; top:-4px; opacity:.95; }
-  .cloud .base { position:absolute; left:0; right:0; bottom:-6px; height:22px; border-radius:14px; background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); }
-  @media (max-width:1024px){ .lg\:col-span-3 { grid-column: 1 / -1; } }
 
-  /* Light mode overrides */
+  /* ---------- Cloud mark (tiny decorative) ---------- */
+  .cloud { width:56px; height:32px; position:relative; filter: drop-shadow(0 8px 18px rgba(2,6,23,0.6)); }
+  .cloud:before, .cloud:after { content:''; position:absolute; background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); border-radius:999px; }
+  .cloud:before { width:44px; height:30px; left:6px; top:2px; opacity:.95; }
+  .cloud:after  { width:28px; height:28px; right:2px; top:-4px; opacity:.95; }
+  .cloud .base { position:absolute; left:0; right:0; bottom:-5px; height:18px; border-radius:12px; background: linear-gradient(90deg,var(--accent-from),var(--accent-to)); }
+
+  /* ---------- Theme toggle (styled pill) ---------- */
+  .theme-toggle { display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; background: rgba(255,255,255,0.04); cursor:pointer; user-select:none; }
+  .theme-toggle i{ display:inline-flex; align-items:center; justify-content:center; }
+
+  /* ---------- Light mode ---------- */
   body.light { background: #f8fafc; color: #0f172a; }
   body.light .panel { background: rgba(2,6,23,0.03); }
   body.light .file-card { background: rgba(2,6,23,0.03); }
+  body.light .theme-toggle { background: rgba(2,6,23,0.03); }
+
+  /* small responsive adjustments */
+  @media (max-width:1024px){ .lg\:col-span-3 { grid-column: 1 / -1; } }
 </style>
 </head>
 
@@ -40,22 +62,23 @@
 <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
 <!-- LEFT SIDEBAR: profile + token + global actions + three-dot menu -->
-<div class="lg:col-span-1 panel backdrop-blur p-4 rounded-xl sticky top-6">
-  <div class="flex items-center justify-between">
+<div class="lg:col-span-1 panel backdrop-blur left-panel sticky top-6">
+  <div class="flex items-start justify-between">
     <div class="flex items-center gap-3">
-      <div id="avatarPreview" class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-600 to-cyan-400 flex items-center justify-center text-lg ring-1 ring-white/5">U</div>
+      <div id="avatarPreview" class="avatar bg-gradient-to-br from-indigo-600 to-cyan-400 text-white">U</div>
       <div>
         <div id="profileName" class="font-semibold">Profile</div>
-        <div id="profileToken" class="text-xs opacity-70">token: —</div>
+        <div id="profileToken" class="muted">token: —</div>
       </div>
     </div>
+
     <!-- three-dot menu sits in left panel per request -->
     <div class="relative">
       <button id="threeDotMenuBtnLeft" class="three-dot bg-white/3 hover:bg-white/5" aria-haspopup="true">
         <i data-lucide="more-vertical"></i>
       </button>
       <div id="threeDotMenuLeft" class="hidden origin-top-left absolute left-0 mt-12 w-56 bg-slate-800/80 border border-white/6 rounded shadow-lg py-1">
-        <div class="px-4 py-2 text-xs opacity-60">Token actions</div>
+        <div class="px-4 py-2 text-xs muted">Token actions</div>
         <button id="menuMergeLeft" class="w-full text-left px-4 py-2 text-sm hover:bg-white/3">Token merge</button>
         <button id="menuDeleteLeft" class="w-full text-left px-4 py-2 text-sm hover:bg-red-600/10">Delete token</button>
         <button id="menuLogoutLeft" class="w-full text-left px-4 py-2 text-sm hover:bg-white/3">Log out</button>
@@ -64,17 +87,17 @@
   </div>
 
   <div class="mt-6">
-    <div class="text-xs opacity-60 mb-2">Storage (global)</div>
+    <div class="text-xs muted mb-2">Storage (global)</div>
     <div class="w-full bg-white/6 rounded-full h-3 overflow-hidden">
       <div id="storageFill" class="h-3 rounded-full" style="width:0%; background: linear-gradient(90deg,var(--accent-from),var(--accent-to));"></div>
     </div>
-    <div id="storageText" class="text-xs opacity-70 mt-2">Used 0 GB of 50 GB</div>
+    <div id="storageText" class="text-xs muted mt-2">Used 0 GB of 50 GB</div>
   </div>
 
   <div class="mt-6 grid grid-cols-1 gap-2">
-    <button id="openMerge" class="py-2 rounded bg-white/5 hover:bg-white/10 text-sm">Merge tokens</button>
-    <button id="openDelete" class="py-2 rounded bg-white/5 hover:bg-white/10 text-sm">Delete token</button>
-    <button id="logoutBtn" class="py-2 rounded bg-red-600/10 hover:bg-red-600/20 text-sm">Log out</button>
+    <button id="openMerge" class="action-btn bg-white/5 hover:bg-white/10">Merge tokens</button>
+    <button id="openDelete" class="action-btn bg-white/5 hover:bg-white/10">Delete token</button>
+    <button id="logoutBtn" class="action-btn bg-red-600/10 hover:bg-red-600/20">Log out</button>
   </div>
 </div>
 
@@ -83,9 +106,13 @@
 
   <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
 
-  <!-- top-right: theme switch -->
+  <!-- top-right: theme switch (visual only) -->
   <div class="absolute right-6 top-6">
-    <button id="themeToggle" class="py-1 px-3 rounded bg-white/5 hover:bg-white/10 text-sm">Toggle theme</button>
+    <button id="themeToggle" class="theme-toggle" title="Toggle light / dark">
+      <i data-lucide="sun"></i>
+      <span class="text-sm muted">Theme</span>
+      <i data-lucide="moon"></i>
+    </button>
   </div>
 
   <!-- UPLOAD BOX (CLICK + DRAG) -->
@@ -162,8 +189,6 @@ const token = new URLSearchParams(location.search).get('token');
 if (!token) location.href = 'index.html';
 
 document.getElementById('profileToken').textContent = 'token: ' + token;
-
-document.getElementById('headerToken')?.textContent = token;
 
 /* UI refs */
 const uploadBox = document.getElementById('uploadBox');
@@ -381,7 +406,7 @@ document.getElementById('refreshBtn').onclick = () => { fetchFiles(); fetchStats
 // profile edit (simple client-side demo)
 document.getElementById('avatarPreview').onclick = ()=>{ const n=prompt('Set display name'); if(n) document.getElementById('profileName').textContent=n; };
 
-// THEME TOGGLE
+// THEME TOGGLE (keeps previous logic - only style changed)
 const themeBtn = document.getElementById('themeToggle');
 const bodyRoot = document.getElementById('bodyRoot');
 function applyTheme(theme){
