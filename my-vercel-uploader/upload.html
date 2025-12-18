@@ -141,7 +141,6 @@
         <label class="text-xs opacity-60">Search tokens to add as <strong>sources</strong></label>
         <div class="flex gap-2 mt-2">
           <input id="tokenSearchInput" class="flex-1 p-2 rounded bg-white/5" placeholder="Search tokens by id or name" />
-          <button id="tokenSearchBtn" class="px-3 py-2 rounded bg-indigo-600">Search</button>
         </div>
         <div id="searchResults" class="mt-2 grid gap-2"></div>
       </div>
@@ -411,7 +410,6 @@ menuLogout.addEventListener('click', ()=> location.href='index.html');
 const mergeModal = document.getElementById('mergeModal');
 const closeMerge = document.getElementById('closeMerge');
 const tokenSearchInput = document.getElementById('tokenSearchInput');
-const tokenSearchBtn = document.getElementById('tokenSearchBtn');
 const searchResults = document.getElementById('searchResults');
 const selectedSourcesEl = document.getElementById('selectedSources');
 const mergeConfirmInput = document.getElementById('mergeConfirmInput');
@@ -460,27 +458,53 @@ async function searchTokens(query){
   }
 }
 
-tokenSearchBtn.addEventListener('click', async ()=>{
-  const q = tokenSearchInput.value.trim();
-  searchResults.innerHTML = 'Searching...';
-  const hits = await searchTokens(q);
-  if (!hits.length) {
-    searchResults.innerHTML = '<div class="opacity-60 text-sm">No tokens found</div>';
+let searchTimeout = null;
+
+tokenSearchInput.addEventListener('input', () => {
+  const query = tokenSearchInput.value.trim();
+
+  // clear old timer
+  if (searchTimeout) clearTimeout(searchTimeout);
+
+  // empty input → clear results
+  if (!query) {
+    searchResults.innerHTML = '';
     return;
   }
-  searchResults.innerHTML = '';
-  hits.forEach(t => {
-    // t should contain at least { id, name }
-    const row = document.createElement('div');
-    row.className = 'flex items-center justify-between p-2 bg-white/5 rounded';
-    row.innerHTML = `
-      <div class="truncate">${t.id}${t.name ? ' — '+t.name : ''}</div>
-      <button class="px-2 py-1 rounded bg-indigo-600 add-source-btn">Add</button>
-    `;
-    row.querySelector('.add-source-btn').onclick = ()=> addSource(t.id);
-    searchResults.appendChild(row);
-  });
+
+  // debounce (300ms)
+  searchTimeout = setTimeout(async () => {
+    searchResults.innerHTML = '<div class="opacity-60 text-sm">Searching…</div>';
+
+    const hits = await searchTokens(query);
+
+    if (!hits.length) {
+      searchResults.innerHTML =
+        '<div class="opacity-60 text-sm">No tokens found</div>';
+      return;
+    }
+
+    searchResults.innerHTML = '';
+    hits.forEach(t => {
+      const row = document.createElement('div');
+      row.className =
+        'flex items-center justify-between p-2 bg-white/5 rounded';
+
+      row.innerHTML = `
+        <div class="truncate">${t.id}</div>
+        <button class="px-2 py-1 rounded bg-indigo-600 add-source-btn">
+          +
+        </button>
+      `;
+
+      row.querySelector('.add-source-btn').onclick =
+        () => addSource(t.id);
+
+      searchResults.appendChild(row);
+    });
+  }, 300);
 });
+
 
 function addSource(id){
   if (!id || id === token) return showMsg('Cannot add current token as source','error');
