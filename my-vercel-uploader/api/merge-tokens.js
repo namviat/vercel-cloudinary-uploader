@@ -24,12 +24,10 @@ module.exports = async (req, res) => {
     api_key: process.env.CLOUDINARY_API_KEY || '484797141727837',
     api_secret: process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk'
   });
-
-  try {
+try {
     for (const source of sources) {
       let nextCursor = null;
 
-      // 1️⃣ List all files in source token
       do {
         const result = await cloudinary.api.resources({
           resource_type: 'raw',
@@ -40,34 +38,42 @@ module.exports = async (req, res) => {
         });
 
         for (const file of result.resources) {
-  const filename = file.public_id.split('/').pop();
-  const newPublicId = `${BASE_FOLDER}/${dest}/${filename}`;
+          const parts = file.public_id.split('/');
+          const originalName = parts.pop();
+          const nameOnly = originalName.replace(/\.[^/.]+$/, '');
+          const ext = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
 
-  await cloudinary.uploader.rename(
-    file.public_id,
-    newPublicId,
-    {
-      resource_type: 'raw',
-      overwrite: true
-    }
-  );
-}
+          // 🔐 Make filename collision-safe
+          const safeName = `${nameOnly}__${source}${ext}`;
+          const newPublicId = `${BASE_FOLDER}/${dest}/${safeName}`;
 
+          try {
+            await cloudinary.uploader.rename(
+              file.public_id,
+              newPublicId,
+              { resource_type: 'raw' }
+            );
+          } catch (e) {
+            console.error('Rename failed:', file.public_id, e.message);
+            // continue merge, don’t kill entire process
+          }
+        }
 
         nextCursor = result.next_cursor;
       } while (nextCursor);
 
-      // 3️⃣ Delete source token folder
+      // delete source folder AFTER all renames
       await cloudinary.api.delete_folder(`${BASE_FOLDER}/${source}`);
     }
 
-    res.status(200).json({ success: true });
+    return res.status(200).json({ success: true });
 
   } catch (err) {
-    console.error('Merge failed:', err);
-    res.status(500).json({
+    console.error('Merge fatal error:', err);
+    return res.status(500).json({
       error: 'Merge failed',
       details: err.message
     });
   }
 };
+
