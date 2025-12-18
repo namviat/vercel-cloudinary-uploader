@@ -164,6 +164,43 @@
   </div>
 </div>
 
+  <!-- DELETE TOKEN MODAL -->
+<div id="deleteModal"
+     class="fixed inset-0 hidden items-center justify-center modal-backdrop z-50">
+
+  <div class="bg-slate-900/95 border border-white/5 rounded-xl
+              w-full max-w-md p-6">
+    <div class="flex items-start justify-between">
+      <h3 class="text-lg font-semibold text-red-400">Delete Token</h3>
+      <button id="closeDelete" class="text-xs opacity-60">Close</button>
+    </div>
+
+    <p class="mt-3 text-sm opacity-80">
+      This will permanently delete this token and <strong>all its files</strong>.
+      This action cannot be undone.
+    </p>
+
+    <div class="mt-4">
+      <label class="text-xs opacity-60">
+        Type <strong>DELETE</strong> to confirm
+      </label>
+      <input id="deleteConfirmInput"
+             class="w-full p-2 rounded bg-white/5 mt-1"
+             placeholder="Type DELETE to confirm" />
+    </div>
+
+    <div class="mt-5 flex justify-end gap-2">
+      <button id="deleteTokenBtn"
+              class="px-4 py-2 rounded bg-red-600 opacity-60"
+              disabled>
+        Delete token
+      </button>
+    </div>
+
+    <div id="deleteStatus" class="mt-3 text-sm opacity-70"></div>
+  </div>
+</div>
+
 <script>
 /* =========================
    FILE ICONS
@@ -578,20 +615,63 @@ startMergeBtn.addEventListener('click', async ()=>{
   }
 });
 
-// delete token button - simple flow (UI only)
-menuDelete.addEventListener('click', ()=>{
-  if (!confirm('Delete this token and all its files? This is irreversible.')) return;
-  // call backend to delete token and files
-  fetch('/api/delete-token', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ token })
-  }).then(r=>{
-    if (r.ok) {
-      showMsg('Token deleted','success');
-      location.href = 'index.html';
-    } else showMsg('Delete failed','error');
-  }).catch(e=>{ console.error(e); showMsg('Delete failed','error'); });
+  // DELETE TOKEN LOGIC
+const deleteModal = document.getElementById('deleteModal');
+const closeDelete = document.getElementById('closeDelete');
+const deleteConfirmInput = document.getElementById('deleteConfirmInput');
+const deleteTokenBtn = document.getElementById('deleteTokenBtn');
+const deleteStatus = document.getElementById('deleteStatus');
+
+// open modal
+menuDelete.addEventListener('click', (e) => {
+  e.stopPropagation();
+  deleteConfirmInput.value = '';
+  deleteTokenBtn.disabled = true;
+  deleteTokenBtn.classList.add('opacity-60');
+  deleteStatus.textContent = '';
+  deleteModal.classList.remove('hidden');
 });
+
+// close modal
+closeDelete.addEventListener('click', () => {
+  deleteModal.classList.add('hidden');
+});
+
+// enable delete only when DELETE typed
+deleteConfirmInput.addEventListener('input', () => {
+  if (deleteConfirmInput.value.trim() === 'DELETE') {
+    deleteTokenBtn.disabled = false;
+    deleteTokenBtn.classList.remove('opacity-60');
+  } else {
+    deleteTokenBtn.disabled = true;
+    deleteTokenBtn.classList.add('opacity-60');
+  }
+});
+
+// perform delete
+deleteTokenBtn.addEventListener('click', async () => {
+  deleteTokenBtn.disabled = true;
+  deleteStatus.textContent = 'Deleting token…';
+
+  try {
+    const res = await fetch('/api/delete-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+
+    if (!res.ok) throw new Error('delete failed');
+
+    deleteStatus.textContent = 'Token deleted';
+    location.href = 'index.html';
+
+  } catch (err) {
+    console.error(err);
+    deleteStatus.textContent = 'Delete failed';
+    deleteTokenBtn.disabled = false;
+  }
+});
+
 
 </script>
 
