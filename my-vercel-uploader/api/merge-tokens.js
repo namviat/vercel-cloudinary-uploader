@@ -16,9 +16,9 @@ module.exports = async (req, res) => {
   }
 
   if (sources.includes(dest)) {
-    return res.status(400).json({ error: 'Source cannot be destination' });
+    return res.status(400).json({ error: 'Source token cannot be destination' });
   }
-
+  
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dzvz7kzin',
     api_key: process.env.CLOUDINARY_API_KEY || '484797141727837',
@@ -29,7 +29,7 @@ try {
     for (const source of sources) {
       let nextCursor = null;
 
-      // 1️⃣ Move files
+      // 1️⃣ MOVE FILES FROM SOURCE → DESTINATION
       do {
         const result = await cloudinary.api.resources({
           resource_type: 'raw',
@@ -44,6 +44,7 @@ try {
           const nameOnly = originalName.replace(/\.[^/.]+$/, '');
           const ext = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
 
+          // collision-safe filename
           const safeName = `${nameOnly}__${source}${ext}`;
           const newPublicId = `${BASE_FOLDER}/${dest}/${safeName}`;
 
@@ -54,14 +55,24 @@ try {
               { resource_type: 'raw' }
             );
           } catch (e) {
-            console.warn('Skip file:', file.public_id, e.message);
+            console.warn('Rename skipped:', file.public_id, e.message);
           }
         }
 
         nextCursor = result.next_cursor;
       } while (nextCursor);
 
-      // 2️⃣ Cleanup (NON-CRITICAL)
+      // 2️⃣ FORCE DELETE ALL FILES FROM SOURCE TOKEN
+      try {
+        await cloudinary.api.delete_resources_by_prefix(
+          `${BASE_FOLDER}/${source}/`,
+          { resource_type: 'raw', type: 'upload' }
+        );
+      } catch (e) {
+        console.warn('Resource cleanup skipped:', source, e.message);
+      }
+
+      // 3️⃣ DELETE SOURCE FOLDER (COSMETIC)
       try {
         await cloudinary.api.delete_folder(`${BASE_FOLDER}/${source}`);
       } catch (e) {
@@ -69,7 +80,7 @@ try {
       }
     }
 
-    // ✅ SUCCESS — send OK no matter what cleanup did
+    // ✅ ALWAYS RETURN SUCCESS IF MOVE WORKED
     return res.status(200).json({ success: true });
 
   } catch (err) {
