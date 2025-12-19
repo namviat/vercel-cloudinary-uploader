@@ -393,23 +393,44 @@ async function forceDownload(url, filename){
    STORAGE SUMMARY (always visible)
    Uses /api/storage-summary (server file present). :contentReference[oaicite:3]{index=3}
    Refreshes on load and every 60s.
-========================= */
-async function refreshStorageSummary(){
+async function refreshStorageSummary() {
   try {
     const res = await fetch('/api/storage-summary');
-    if (!res.ok) throw new Error('storage fetch failed');
+    if (!res.ok) throw new Error('Storage API failed');
+
     const data = await res.json();
-    const percent = data.limitBytes ? Math.min(100, Math.round(data.totalBytes / data.limitBytes * 100)) : 0;
-    storageFill.style.width = percent + '%';
-    storageText.textContent = `${(data.totalBytes / (1024*1024*1024)).toFixed(2)} GB used`;
-  } catch (e) {
-    console.error('storage summary error', e);
-    storageFill.style.width = '0%';
-    storageText.textContent = 'Storage info unavailable';
+
+    const percent = Math.min(
+      100,
+      (data.totalBytes / data.limitBytes) * 100
+    );
+
+    const usedText = formatSize(data.totalBytes);
+    const limitText = formatSize(data.limitBytes);
+
+    document.getElementById('storageText').textContent =
+      `${usedText} / ${limitText}`;
+
+    document.getElementById('storageFill').style.width =
+      percent + '%';
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('storageText').textContent = 'Error';
+    document.getElementById('storageFill').style.width = '0%';
   }
 }
+
+function formatSize(bytes) {
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return gb.toFixed(2) + ' GB';
+  const mb = bytes / (1024 * 1024);
+  return mb.toFixed(2) + ' MB';
+}
+
 refreshStorageSummary();
-setInterval(refreshStorageSummary, 60000); // every 60s
+setInterval(refreshStorageSummary, 60000);
+
 
 /* =========================
    FEATURE PANEL CONTROL (no backend changes)
