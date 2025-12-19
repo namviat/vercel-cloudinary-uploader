@@ -1,9 +1,10 @@
+// api/token.js
 import cloudinary from 'cloudinary';
 
 cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 /* =========================
@@ -26,89 +27,70 @@ const titles = [
   "of Mist","of Ember","of Frost","of Night"
 ];
 
-function generateAnimeName(existing) {
-  let name;
-  do {
-    const a = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const n = nouns[Math.floor(Math.random() * nouns.length)];
-    name = Math.random() > 0.5
-      ? `${a} ${n} ${titles[Math.floor(Math.random() * titles.length)]}`
-      : `${a} ${n}`;
-  } while (existing.has(name));
-  return name;
+function generateAnimeName() {
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  return Math.random() > 0.5
+    ? `${adj} ${noun} ${titles[Math.floor(Math.random() * titles.length)]}`
+    : `${adj} ${noun}`;
 }
 
 /* =========================
-   API
+   API handler
 ========================= */
 export default async function handler(req, res) {
-  const token = req.method === 'GET'
-    ? req.query.token
-    : req.body?.token;
-
-  if (!token) {
-    return res.status(400).json({ error: 'Invalid token' });
-  }
-
-  const folderPath = `mycloud/${token}`;
-
   try {
-    // Try listing folder
-    let folder;
-    try {
-      folder = await cloudinary.v2.api.sub_folders(`mycloud`);
-    } catch {}
+    const token =
+      req.method === 'GET'
+        ? req.query.token
+        : req.body?.token;
 
-    const folders = folder?.folders || [];
-    const exists = folders.find(f => f.name === token);
+    if (!token) {
+      return res.status(400).json({ error: 'Invalid token' });
+    }
 
-    // Collect existing names
-    const existingNames = new Set();
-    for (const f of folders) {
-      const details = await cloudinary.v2.api.folder(`mycloud/${f.name}`);
-      if (details.context?.custom?.name) {
-        existingNames.add(details.context.custom.name);
+    const folder = `mycloud/${token}`;
+
+    // try to read folder resources
+    const resources = await cloudinary.v2.search
+      .expression(`folder:${folder}`)
+      .max_results(1)
+      .execute();
+
+    let profileName;
+    let avatarSeed = token;
+
+    if (resources.resources.length > 0) {
+      const ctx = resources.resources[0].context || {};
+      profileName = ctx.profile_name;
+    }
+
+    // FIRST TIME → create metadata
+    if (!profileName) {
+      profileName = generateAnimeName();
+
+      // attach metadata to folder by tagging first asset
+      if (resources.resources.length > 0) {
+        await cloudinary.v2.uploader.add_context(
+          {
+            profile_name: profileName,
+          },
+          resources.resources[0].public_id
+        );
       }
     }
 
-    // CREATE METADATA IF NOT EXISTS
-    if (!exists) {
-      const name = generateAnimeName(existingNames);
-
-      await cloudinary.v2.api.create_folder(folderPath);
-
-      await cloudinary.v2.api.update_folder(folderPath, {
-        context: {
-          name,
-          avatar: 'adventurer'
-        }
-      });
-
-      return res.json({
-        token,
-        name,
-        avatar: {
-          style: 'adventurer',
-          seed: token
-        }
-      });
-    }
-
-    // READ METADATA
-    const info = await cloudinary.v2.api.folder(folderPath);
-    const ctx = info.context?.custom || {};
-
-    return res.json({
+    return res.status(200).json({
       token,
-      name: ctx.name || 'Unknown',
+      name: profileName,
       avatar: {
-        style: ctx.avatar || 'adventurer',
-        seed: token
-      }
+        style: 'adventurer',
+        seed: avatarSeed,
+      },
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Token API failed' });
+    console.error('Token API error:', err);
+    return res.status(500).json({ error: 'Token API failed' });
   }
 }
