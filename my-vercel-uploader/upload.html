@@ -1,334 +1,743 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Qloud — Upload</title>
 
 <!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
-
 <!-- Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
-/* ---------------- BASE ---------------- */
-body {
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  background:#f5f7fb;
-  color:#0f172a;
-}
+  /* Base */
+  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; background:#f5f7fb; color:#0f172a; }
+  .card { background:#fff; border-radius:12px; box-shadow:0 6px 20px rgba(2,6,23,0.06); border:1px solid rgba(2,6,23,0.04); }
 
-/* ---------------- SIDEBAR (FROM YOUR EXAMPLE, ADAPTED) ---------------- */
-.sidebar {
-  position: fixed;
-  left: 16px;
-  top: 16px;
-  bottom: 16px;
-  width: 270px;
-  background:#ffffff;
-  border-radius:20px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.08);
-  transition:all .45s cubic-bezier(.175,.885,.32,1.1);
-  overflow:hidden;
-  z-index:50;
-}
-.sidebar.collapsed { width:88px; }
+  /* SIDEBAR (adapted from your smooth hover example) */
+  .sidebar {
+    position: fixed;
+    left: 16px;
+    top: 16px;
+    bottom: 16px;
+    width: 270px;
+    background: #ffffff;
+    border-radius: 18px;
+    transition: all .45s cubic-bezier(.175,.885,.32,1.1);
+    overflow: hidden;
+    z-index: 50;
+    display:flex;
+    flex-direction:column;
+    padding-bottom:12px;
+  }
+  .sidebar.collapsed { width: 88px; }
 
-.sidebar-header {
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:22px;
-}
+  .sidebar-header { display:flex; align-items:center; gap:12px; padding:20px; }
+  .avatar { width:44px; height:44px; border-radius:10px; background:#eef2ff; display:flex; align-items:center; justify-content:center; font-weight:700; color:#374151; }
+  .label { transition: all .25s; }
+  .sidebar.collapsed .label { opacity:0; transform:translateX(-8px); pointer-events:none; }
 
-.avatar {
-  width:44px;
-  height:44px;
-  border-radius:12px;
-  background:#e5e7eb;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:600;
-}
+  .nav { padding:10px 12px; flex:1; overflow:auto; }
+  .nav-item { position:relative; margin-bottom:6px; }
+  .nav-btn {
+    display:flex; align-items:center; gap:12px;
+    padding:12px; border-radius:10px; cursor:pointer; color:#475569;
+    transition: all .18s;
+  }
+  .nav-btn:hover { background:#f1f5f9; color:#0f172a; transform: translateX(4px); }
+  .nav-icon { width:20px; height:20px; flex:0 0 20px; color:inherit; }
 
-.sidebar.collapsed .label {
-  opacity:0;
-  transform:translateX(-10px);
-  pointer-events:none;
-}
+  /* Tooltip for collapsed sidebar */
+  .tooltip {
+    position:absolute; left:100%; top:50%; transform:translate(10px,-50%); background:#0f172a; color:#fff;
+    padding:6px 10px; border-radius:8px; font-size:12px; opacity:0; pointer-events:none; transition:.18s;
+  }
+  .sidebar.collapsed .nav-item:hover .tooltip { opacity:1; transform:translate(18px,-50%); }
 
-.label {
-  transition:all .3s ease;
-  white-space:nowrap;
-}
+  /* Storage indicator always visible in sidebar footer */
+  .sidebar-footer { padding:12px; border-top:1px solid rgba(2,6,23,0.03); }
+  .storage-bar { height:8px; background:#eef2ff; border-radius:999px; overflow:hidden; }
+  .storage-fill { height:100%; background:linear-gradient(90deg,#6366f1,#06b6d4); width:0%; transition:width .5s; }
 
-.nav {
-  padding:0 12px;
-  margin-top:8px;
-}
+  /* APP layout: margin-left to make space for sidebar */
+  .app { margin-left: 306px; padding:24px 32px; }
 
-.nav-item {
-  position:relative;
-}
+  /* MAIN area styling */
+  .upload-box { border:2px dashed #c7d2fe; background:#fff; border-radius:12px; padding:44px; text-align:center; cursor:pointer; transition:.18s; }
+  .upload-box:hover { background:#fbfdff; box-shadow:0 8px 30px rgba(2,6,23,0.04); }
+  .file-card { background:#fff; border-radius:10px; padding:12px; box-shadow:0 4px 12px rgba(2,6,23,0.03); position:relative; border:1px solid rgba(2,6,23,0.03); }
+  .file-actions { position:absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:.15s; }
+  .file-card:hover .file-actions { opacity:1; }
+  .file-action-btn { width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.04); cursor:pointer; }
 
-.nav-btn {
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:14px;
-  border-radius:12px;
-  color:#475569;
-  cursor:pointer;
-  transition:all .25s ease;
-}
-.nav-btn:hover {
-  background:#f1f5f9;
-  color:#0f172a;
-}
+  /* Feature panel on right (hidden by default) */
+  .feature-panel {
+    position: fixed;
+    right: 20px;
+    top: 16px;
+    bottom: 16px;
+    width: 380px;
+    padding:16px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 14px 40px rgba(2,6,23,0.06);
+    display:none;
+    z-index:40;
+    overflow:auto;
+  }
+  .feature-panel.active { display:block; }
 
-.tooltip {
-  position:absolute;
-  left:100%;
-  top:50%;
-  transform:translate(12px,-50%);
-  background:#0f172a;
-  color:#fff;
-  padding:6px 10px;
-  font-size:12px;
-  border-radius:6px;
-  opacity:0;
-  pointer-events:none;
-  transition:.25s ease;
-}
-.sidebar.collapsed .nav-item:hover .tooltip {
-  opacity:1;
-}
-
-/* ---------------- LAYOUT ---------------- */
-.app {
-  display:grid;
-  grid-template-columns: 1fr;
-  margin-left:320px;
-  margin-right:24px;
-  padding-top:24px;
-}
-
-/* ---------------- MAIN FILE AREA ---------------- */
-.main {
-  max-width:1100px;
-}
-
-/* ---------------- RIGHT FEATURE AREA ---------------- */
-.feature-area {
-  position:fixed;
-  right:24px;
-  top:24px;
-  bottom:24px;
-  width:360px;
-  display:none;
-}
-
-/* visible only when feature active */
-.feature-area.active {
-  display:block;
-}
-
-/* ---------------- UPLOAD BOX ---------------- */
-.upload-box {
-  border:2px dashed #c7d2fe;
-  background:#ffffff;
-  border-radius:18px;
-  padding:48px;
-  text-align:center;
-  cursor:pointer;
-  transition:.25s ease;
-}
-.upload-box:hover {
-  background:#f8fafc;
-}
-
-/* ---------------- FILE CARD ---------------- */
-.file-card {
-  background:#ffffff;
-  border-radius:14px;
-  padding:16px;
-  position:relative;
-  box-shadow:0 4px 12px rgba(0,0,0,0.05);
-}
-.file-actions {
-  position:absolute;
-  top:8px;
-  right:8px;
-  display:flex;
-  gap:6px;
-  opacity:0;
-  transition:.2s;
-}
-.file-card:hover .file-actions { opacity:1; }
-
-/* ---------------- STORAGE BAR ---------------- */
-.storage-wrap {
-  margin:16px;
-  padding:14px;
-  background:#f8fafc;
-  border-radius:12px;
-}
-.storage-bar {
-  height:6px;
-  background:#e5e7eb;
-  border-radius:999px;
-  overflow:hidden;
-}
-.storage-fill {
-  height:100%;
-  background:#6366f1;
-}
+  /* small responsive changes */
+  @media (max-width: 1024px) {
+    .sidebar { left:10px; top:10px; bottom:10px; width: 88px; }
+    .app { margin-left:120px; padding:16px; }
+    .feature-panel { display:none !important; } /* keep it off on small screens */
+  }
 </style>
 </head>
 
 <body>
 
-<!-- ================= SIDEBAR ================= -->
-<aside class="sidebar collapsed" id="sidebar">
-
-  <!-- HEADER -->
+<!-- SIDEBAR -->
+<aside id="sidebar" class="sidebar collapsed">
   <div class="sidebar-header">
-    <div class="avatar">U</div>
+    <div class="avatar" id="avatarPreview">U</div>
     <div class="label">
-      <div class="font-semibold" id="profileName">Profile</div>
-      <div class="text-xs text-slate-500" id="profileToken"></div>
+      <div id="profileName" class="font-semibold text-slate-900">Profile</div>
+      <div id="profileToken" class="text-xs text-slate-500">token: ...</div>
     </div>
   </div>
 
-  <!-- NAV -->
-  <div class="nav">
+  <nav class="nav">
 
-    <!-- 3 DOT MENU -->
+    <!-- Features placed here (no 3-dot). Icons always visible; labels hide when collapsed -->
     <div class="nav-item">
-      <div class="nav-btn" id="menuToggle">
-        <i data-lucide="more-vertical"></i>
-        <span class="label">Features</span>
+      <div class="nav-btn feature-btn" data-feature="search">
+        <i data-lucide="search" class="nav-icon"></i>
+        <div class="label">Token Search</div>
       </div>
-      <span class="tooltip">Features</span>
+      <div class="tooltip">Token Search</div>
     </div>
 
-    <!-- FEATURE LIST -->
-    <div id="featureList" class="mt-2 hidden">
-      <div class="nav-item">
-        <div class="nav-btn feature-btn" data-feature="search">
-          <i data-lucide="search"></i><span class="label">Token Search</span>
-        </div>
+    <div class="nav-item">
+      <div class="nav-btn feature-btn" data-feature="merge">
+        <i data-lucide="shuffle" class="nav-icon"></i>
+        <div class="label">Token Merge</div>
       </div>
-      <div class="nav-item">
-        <div class="nav-btn feature-btn" data-feature="merge">
-          <i data-lucide="shuffle"></i><span class="label">Token Merge</span>
-        </div>
-      </div>
-      <div class="nav-item">
-        <div class="nav-btn feature-btn" data-feature="delete">
-          <i data-lucide="trash-2"></i><span class="label">Delete Token</span>
-        </div>
-      </div>
+      <div class="tooltip">Token Merge</div>
     </div>
 
-  </div>
+    <div class="nav-item">
+      <div class="nav-btn feature-btn" data-feature="delete">
+        <i data-lucide="trash-2" class="nav-icon"></i>
+        <div class="label">Delete Token</div>
+      </div>
+      <div class="tooltip">Delete Token</div>
+    </div>
 
-  <!-- STORAGE INDICATOR -->
-  <div class="storage-wrap label">
-    <div class="text-xs text-slate-500 mb-1">Overall Storage</div>
+    <!-- Add other features here if you want (keep consistent) -->
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="text-xs text-slate-500 mb-2">Overall storage</div>
     <div class="storage-bar">
-      <div id="storageFill" class="storage-fill" style="width:0%"></div>
+      <div id="storageFill" class="storage-fill"></div>
     </div>
-    <div class="text-xs text-slate-500 mt-1" id="storageText"></div>
+    <div id="storageText" class="text-xs text-slate-500 mt-2"></div>
   </div>
 
-  <!-- LOGOUT -->
-  <div class="nav mt-auto">
+  <div style="padding:10px 12px;">
     <div class="nav-item">
-      <div class="nav-btn" id="logoutBtn">
-        <i data-lucide="log-out"></i><span class="label">Logout</span>
+      <div id="logoutBtn" class="nav-btn">
+        <i data-lucide="log-out" class="nav-icon"></i><div class="label">Logout</div>
       </div>
     </div>
   </div>
-
 </aside>
 
-<!-- ================= APP ================= -->
+<!-- APP CONTENT -->
 <div class="app">
 
-  <!-- MAIN FILE OPERATIONS (UNCHANGED LOGIC) -->
-  <div class="main">
-
+  <!-- main content -->
+  <main class="max-w-5xl mx-auto">
     <div id="msg" class="hidden mb-4"></div>
 
+    <!-- UPLOAD BOX -->
     <div id="uploadBox" class="upload-box">
-      <input id="fileInput" type="file" multiple hidden/>
+      <input id="fileInput" type="file" multiple hidden />
       <div class="text-4xl mb-2">☁️</div>
       <div class="font-semibold">Click or drag & drop files here</div>
       <div class="text-sm text-slate-500 mt-1">Files are private to this token</div>
     </div>
 
+    <!-- Progress -->
     <div id="progressWrap" class="hidden mt-4">
-      <div class="w-full bg-slate-200 h-2 rounded">
-        <div id="progressFill" class="h-2 bg-indigo-500 rounded"></div>
+      <div class="w-full bg-slate-100 h-2 rounded overflow-hidden">
+        <div id="progressFill" class="h-2 bg-gradient-to-r from-indigo-500 to-cyan-400" style="width:0%"></div>
       </div>
       <div id="statusText" class="text-xs text-slate-500 mt-1"></div>
     </div>
 
-    <div class="mt-6">
-      <h2 class="font-semibold mb-3">Files <span id="count" class="text-sm text-slate-500"></span></h2>
-      <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
-    </div>
+    <!-- Files -->
+    <section class="mt-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">Files <span id="count" class="text-sm text-slate-500"></span></h2>
+      </div>
 
-  </div>
+      <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </section>
+  </main>
 </div>
 
-<!-- ================= RIGHT FEATURE AREA ================= -->
-<div class="feature-area" id="featureArea"></div>
+<!-- RIGHT FEATURE PANEL (hidden by default) -->
+<aside id="featurePanel" class="feature-panel" aria-hidden="true"></aside>
 
-<!-- ================= SCRIPT ================= -->
+<!-- lucide icons -->
+<script>lucide.createIcons()</script>
+
+<!-- ================= JAVASCRIPT: functionality preserved ================= -->
 <script>
-/* -------- SIDEBAR HOVER (FROM YOUR CODE) -------- */
-const sidebar = document.getElementById("sidebar");
-sidebar.addEventListener("mouseenter",()=>window.innerWidth>=1024&&sidebar.classList.remove("collapsed"));
-sidebar.addEventListener("mouseleave",()=>window.innerWidth>=1024&&sidebar.classList.add("collapsed"));
+/* =========================
+   CONFIG (unchanged)
+========================= */
+const CLOUD_NAME = 'dzvz7kzin';
+const UPLOAD_PRESET = 'mycloud_unsigned';
+const BASE_FOLDER = 'mycloud';
 
-/* -------- FEATURE MENU TOGGLE -------- */
-document.getElementById("menuToggle").onclick=()=>{
-  document.getElementById("featureList").classList.toggle("hidden");
-};
+const token = new URLSearchParams(location.search).get('token');
+if (!token) {
+  // If token missing, go to homepage (original behavior)
+  location.href = 'index.html';
+}
+document.getElementById('profileToken').textContent = token ? token : '';
 
-/* -------- FEATURE OPEN / CLOSE (NO LOGIC CHANGE) -------- */
-const featureArea=document.getElementById("featureArea");
-document.querySelectorAll(".feature-btn").forEach(btn=>{
-  btn.onclick=()=>{
-    const f=btn.dataset.feature;
-    featureArea.innerHTML=document.getElementById(f+"Feature")?.innerHTML||"";
-    featureArea.classList.toggle("active");
-  };
+/* =========================
+   UI REFS
+========================= */
+const uploadBox = document.getElementById('uploadBox');
+const fileInput = document.getElementById('fileInput');
+const fileGrid = document.getElementById('fileGrid');
+const countEl = document.getElementById('count');
+const msgEl = document.getElementById('msg');
+const progressWrap = document.getElementById('progressWrap');
+const progressFill = document.getElementById('progressFill');
+const statusText = document.getElementById('statusText');
+
+const featurePanel = document.getElementById('featurePanel');
+const featureButtons = document.querySelectorAll('.feature-btn');
+const sidebar = document.getElementById('sidebar');
+const logoutBtn = document.getElementById('logoutBtn');
+const storageFill = document.getElementById('storageFill');
+const storageText = document.getElementById('storageText');
+
+let files = [];
+
+/* =========================
+   Sidebar hover behavior (from your provided code)
+========================= */
+function applySidebarHoverBehavior() {
+  // collapsed by default on large screens
+  if (window.innerWidth >= 1024) {
+    sidebar.classList.add('collapsed');
+  } else {
+    sidebar.classList.remove('collapsed');
+  }
+
+  sidebar.addEventListener('mouseenter', () => {
+    if (window.innerWidth >= 1024) sidebar.classList.remove('collapsed');
+  });
+  sidebar.addEventListener('mouseleave', () => {
+    if (window.innerWidth >= 1024) sidebar.classList.add('collapsed');
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); }
+    else { sidebar.classList.remove('collapsed'); featurePanel.classList.remove('active'); featurePanel.setAttribute('aria-hidden','true'); }
+  });
+}
+applySidebarHoverBehavior();
+
+/* =========================
+   DISPLAY MESSAGES
+========================= */
+function showMsg(text, type='info') {
+  msgEl.textContent = text;
+  msgEl.className = 'p-3 rounded mb-4 text-sm ' +
+    (type==='success' ? 'bg-emerald-50 text-emerald-700' :
+     type==='error' ? 'bg-red-50 text-red-700' :
+     'bg-slate-50 text-slate-700');
+  msgEl.classList.remove('hidden');
+  setTimeout(()=> msgEl.classList.add('hidden'), 3000);
+}
+
+/* =========================
+   FILE ICON HELPER
+========================= */
+function getFileIcon(publicId) {
+  const ext = (publicId.split('.').pop() || '').toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
+  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
+  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
+  if (['pdf'].includes(ext)) return 'file-text';
+  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
+  return 'file';
+}
+
+/* =========================
+   FETCH FILES (original behavior)
+========================= */
+async function fetchFiles() {
+  try {
+    const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
+    const data = await res.json();
+    files = (data.resources || []).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+    renderFiles();
+  } catch (err) {
+    console.error(err);
+    showMsg('Failed to load files','error');
+  }
+}
+
+/* =========================
+   RENDER FILES (UI only)
+========================= */
+function renderFiles() {
+  countEl.textContent = `(${files.length})`;
+  fileGrid.innerHTML = '';
+  if (!files.length) {
+    fileGrid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-8">No files uploaded yet</div>';
+    return;
+  }
+
+  files.forEach(f => {
+    const name = f.public_id.split('/').pop();
+    const size = (f.bytes / 1024 / 1024).toFixed(2);
+    const icon = getFileIcon(f.public_id);
+
+    const card = document.createElement('div');
+    card.className = 'file-card';
+
+    card.innerHTML = `
+      <div class="file-actions">
+        <button class="file-action-btn download-btn" title="Download"><i data-lucide="download" class="w-4 h-4"></i></button>
+        <button class="file-action-btn delete-btn" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="text-3xl mb-2 text-indigo-500"><i data-lucide="${icon}"></i></div>
+      <div class="font-semibold truncate">${name}</div>
+      <div class="text-xs text-slate-500 mt-1">${size} MB</div>
+    `;
+
+    // attach handlers (preserve behavior)
+    card.querySelector('.download-btn').onclick = () => forceDownload(f.secure_url, name);
+    card.querySelector('.delete-btn').onclick = () => deleteFile(f.public_id);
+
+    fileGrid.appendChild(card);
+  });
+
+  lucide.createIcons(); // refresh icons
+}
+
+/* =========================
+   UPLOAD (original behavior)
+========================= */
+uploadBox.addEventListener('click', ()=> fileInput.click());
+
+uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
+uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('ring-2','ring-indigo-200'));
+uploadBox.addEventListener('drop', e => { e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
+
+fileInput.onchange = e => uploadFiles([...e.target.files]);
+
+async function uploadFiles(list) {
+  if (!list.length) return;
+  progressWrap.classList.remove('hidden');
+
+  for (let i=0;i<list.length;i++){
+    const fd = new FormData();
+    fd.append('file', list[i]);
+    fd.append('upload_preset', UPLOAD_PRESET);
+    fd.append('folder', `${BASE_FOLDER}/${token}`);
+
+    statusText.textContent = `Uploading ${list[i].name}`;
+    progressFill.style.width = ((i+1)/list.length*100)+'%';
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method:'POST', body:fd });
+    if (!res.ok) {
+      showMsg(`Upload failed: ${list[i].name}`,'error');
+      break;
+    }
+  }
+
+  progressWrap.classList.add('hidden');
+  progressFill.style.width = '0%';
+  fetchFiles();
+}
+
+/* =========================
+   DELETE (original behavior)
+========================= */
+async function deleteFile(publicId) {
+  try {
+    const res = await fetch('/api/delete-file', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ public_id: publicId })
+    });
+    if (!res.ok) throw new Error();
+    fetchFiles();
+    showMsg('File deleted','success');
+  } catch (err) {
+    console.error(err);
+    showMsg('Delete failed','error');
+  }
+}
+
+/* =========================
+   FORCE DOWNLOAD (original)
+========================= */
+async function forceDownload(url, filename){
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    console.error(err);
+    showMsg('Download failed','error');
+  }
+}
+
+/* =========================
+   STORAGE SUMMARY (always-visible bar)
+   - uses /api/storage-summary
+========================= */
+async function refreshStorageSummary() {
+  try {
+    const res = await fetch('/api/storage-summary');
+    if (!res.ok) throw new Error('storage fetch failed');
+    const data = await res.json();
+    const percent = data.limitBytes ? Math.min(100, Math.round(data.totalBytes / data.limitBytes * 100)) : 0;
+    storageFill.style.width = percent + '%';
+    storageText.textContent = `${(data.totalBytes / (1024*1024*1024)).toFixed(2)} GB used • ${data.tokensCount || 0} tokens`;
+  } catch (e) {
+    console.error(e);
+    storageFill.style.width = '0%';
+    storageText.textContent = 'Storage info unavailable';
+  }
+}
+
+/* =========================
+   FEATURE PANEL CONTROL (open specific feature UI)
+   - clicking a feature loads the feature UI into right panel
+   - clicking same feature closes panel
+   - these UIs call your existing endpoints (no logic change)
+========================= */
+
+let activeFeature = null;
+
+function closeFeaturePanel(){
+  featurePanel.classList.remove('active');
+  featurePanel.innerHTML = '';
+  featurePanel.setAttribute('aria-hidden','true');
+  activeFeature = null;
+}
+
+function openFeaturePanel(name) {
+  // toggle: same button closes
+  if (activeFeature === name) { closeFeaturePanel(); return; }
+  // else render UI for the feature
+  activeFeature = name;
+  featurePanel.classList.add('active');
+  featurePanel.setAttribute('aria-hidden','false');
+  featurePanel.innerHTML = ''; // clear
+
+  if (name === 'search') renderSearchFeature();
+  else if (name === 'merge') renderMergeFeature();
+  else if (name === 'delete') renderDeleteFeature();
+  else { featurePanel.innerHTML = '<div class="text-sm text-slate-500">Feature not implemented</div>'; }
+}
+
+/* Hook feature buttons */
+featureButtons.forEach(btn => {
+  btn.addEventListener('click', ()=> openFeaturePanel(btn.dataset.feature) );
 });
 
-/* -------- LOGOUT -------- */
-logoutBtn.onclick=()=>location.href="index.html";
+/* Logout */
+logoutBtn.addEventListener('click', ()=> location.href = 'index.html');
 
-/* -------- ICONS -------- */
+/* =========================
+   Token Search feature UI
+   - debounced typing
+   - uses /api/search-tokens?q=
+   - DOES NOT navigate to another token or auto-open
+========================= */
+function debounce(fn, wait=350){
+  let t;
+  return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this,args), wait); };
+}
+
+function renderSearchFeature() {
+  featurePanel.innerHTML = `
+    <h3 class="text-lg font-semibold mb-3">Token Search</h3>
+    <div class="text-sm text-slate-500 mb-3">Search tokens by id or name. Results are selectable (for merge).</div>
+    <input id="searchInput" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3"/>
+    <div id="searchResults" class="space-y-2"></div>
+  `;
+
+  const si = document.getElementById('searchInput');
+  const results = document.getElementById('searchResults');
+
+  const doSearch = debounce(async (q) => {
+    if (!q) { results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
+    results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
+    try {
+      const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error('search failed');
+      const data = await res.json();
+      const hits = data.tokens || [];
+      if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
+      results.innerHTML = '';
+      hits.forEach(t => {
+        // render each result; NO navigation
+        const row = document.createElement('div');
+        row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+        row.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
+                         <div class="flex gap-2">
+                           <button class="select-token text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-token="${t.id}">Select</button>
+                         </div>`;
+        results.appendChild(row);
+      });
+
+      // attach select handlers (emit custom event for merge panel)
+      results.querySelectorAll('.select-token').forEach(b=>{
+        b.onclick = ()=> {
+          const id = b.dataset.token;
+          // dispatch a window-level event so merge panel can pick it up
+          window.dispatchEvent(new CustomEvent('qloud-token-selected', { detail: { id } }));
+          showMsg('Token selected (available for merge)', 'success');
+        };
+      });
+
+    } catch (e) {
+      console.error(e);
+      results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
+    }
+  });
+
+  si.addEventListener('input', (e)=> doSearch(e.target.value.trim()));
+}
+
+/* =========================
+   Merge feature UI
+   - uses /api/search-tokens and /api/merge-tokens
+   - selected sources handled locally here
+   - also listens to the 'qloud-token-selected' event from search feature
+========================= */
+function renderMergeFeature(){
+  featurePanel.innerHTML = `
+    <h3 class="text-lg font-semibold mb-2">Merge tokens into <strong>${token}</strong></h3>
+    <div class="text-sm text-slate-500 mb-3">Search tokens to add as sources or use Search feature to pick tokens.</div>
+
+    <input id="mergeSearch" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3"/>
+    <div id="mergeSearchResults" class="space-y-2 mb-3"></div>
+
+    <div class="text-xs text-slate-500 mb-2">Selected sources</div>
+    <div id="mergeSelected" class="space-y-2 mb-3"><div class="text-sm text-slate-500">No sources selected</div></div>
+
+    <div class="mb-3">
+      <label class="text-xs text-slate-500">Type <strong>MERGE</strong> to enable</label>
+      <input id="mergeConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type MERGE"/>
+    </div>
+
+    <div class="flex justify-end">
+      <button id="doMergeBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Merge now</button>
+    </div>
+
+    <div id="mergeStatus" class="text-sm text-slate-500 mt-3"></div>
+  `;
+
+  const searchInput = document.getElementById('mergeSearch');
+  const results = document.getElementById('mergeSearchResults');
+  const selectedEl = document.getElementById('mergeSelected');
+  const confirmInput = document.getElementById('mergeConfirm');
+  const doMergeBtn = document.getElementById('doMergeBtn');
+  const mergeStatus = document.getElementById('mergeStatus');
+
+  let selected = [];
+
+  async function doSearch(q) {
+    if (!q) { results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
+    results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
+    try {
+      const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error('search failed');
+      const data = await res.json();
+      const hits = data.tokens || [];
+      if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
+      results.innerHTML = '';
+      hits.forEach(t=>{
+        const row = document.createElement('div');
+        row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+        row.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
+                         <div class="flex gap-2">
+                           <button class="add-source text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-id="${t.id}">Add</button>
+                         </div>`;
+        results.appendChild(row);
+      });
+
+      // attach add handlers
+      results.querySelectorAll('.add-source').forEach(b=>{
+        b.onclick = ()=> {
+          const id = b.dataset.id;
+          if (id === token) { showMsg('Cannot add current token','error'); return; }
+          if (selected.includes(id)) { showMsg('Already selected','info'); return; }
+          selected.push(id); renderSelected();
+        };
+      });
+
+    } catch (e) {
+      console.error(e);
+      results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
+    }
+  }
+
+  const debouncedSearch = debounce(doSearch, 350);
+  searchInput.addEventListener('input', (e)=> debouncedSearch(e.target.value.trim()));
+
+  function renderSelected(){
+    selectedEl.innerHTML = '';
+    if (!selected.length) { selectedEl.innerHTML = '<div class="text-sm text-slate-500">No sources selected</div>'; return; }
+    selected.forEach(s=>{
+      const r = document.createElement('div');
+      r.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+      r.innerHTML = `<div class="truncate text-sm">${s}</div>
+                     <button class="remove-source text-xs px-2 py-1 rounded bg-red-100 text-red-700" data-id="${s}">Remove</button>`;
+      selectedEl.appendChild(r);
+      r.querySelector('.remove-source').onclick = ()=> {
+        selected = selected.filter(x=> x !== s);
+        renderSelected();
+        updateMergeButton();
+      };
+    });
+    updateMergeButton();
+  }
+
+  function updateMergeButton(){
+    if (confirmInput.value.trim() === 'MERGE' && selected.length > 0) { doMergeBtn.disabled = false; doMergeBtn.classList.remove('opacity-60'); }
+    else { doMergeBtn.disabled = true; doMergeBtn.classList.add('opacity-60'); }
+  }
+
+  confirmInput.addEventListener('input', updateMergeButton);
+
+  // support selecting tokens from search feature (global event)
+  const tokenSelectHandler = (ev) => {
+    const id = ev.detail?.id;
+    if (!id) return;
+    if (id === token) { showMsg('Cannot add current token','error'); return; }
+    if (!selected.includes(id)) { selected.push(id); renderSelected(); }
+  };
+  window.addEventListener('qloud-token-selected', tokenSelectHandler);
+
+  doMergeBtn.addEventListener('click', async ()=> {
+    if (!selected.length) return showMsg('Add at least one source','error');
+    if (confirmInput.value.trim() !== 'MERGE') return showMsg('Type MERGE to confirm','error');
+    mergeStatus.textContent = 'Merging...';
+    try {
+      const res = await fetch('/api/merge-tokens', {
+        method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dest: token, sources: selected })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      mergeStatus.textContent = 'Merge successful';
+      showMsg('Merge successful','success');
+      selected = []; renderSelected(); confirmInput.value = ''; updateMergeButton();
+      fetchFiles(); // refresh files to reflect change
+    } catch (e) {
+      console.error(e);
+      mergeStatus.textContent = 'Merge failed';
+      showMsg('Merge failed','error');
+    }
+  });
+
+  // cleanup when panel closed: remove listener
+  const observer = new MutationObserver(()=> {
+    if (!featurePanel.classList.contains('active')) {
+      window.removeEventListener('qloud-token-selected', tokenSelectHandler);
+      observer.disconnect();
+    }
+  });
+  observer.observe(featurePanel, { attributes: true, attributeFilter: ['class'] });
+}
+
+/* =========================
+   Delete Token UI (calls /api/delete-token)
+   - requires typing DELETE to enable
+========================= */
+function renderDeleteFeature(){
+  featurePanel.innerHTML = `
+    <h3 class="text-lg font-semibold mb-2">Delete token</h3>
+    <div class="text-sm text-slate-500 mb-4">This will permanently delete token <strong>${token}</strong> and all files inside.</div>
+    <div class="mb-3">
+      <label class="text-xs text-slate-500">Type <strong>DELETE</strong> to enable</label>
+      <input id="deleteConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type DELETE"/>
+    </div>
+    <div class="flex justify-end"><button id="doDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Delete token</button></div>
+    <div id="deleteStatus" class="text-sm text-slate-500 mt-3"></div>
+  `;
+
+  const confirmInput = document.getElementById('deleteConfirm');
+  const doDeleteBtn = document.getElementById('doDeleteBtn');
+  const deleteStatus = document.getElementById('deleteStatus');
+
+  confirmInput.addEventListener('input', ()=> {
+    if (confirmInput.value.trim() === 'DELETE') { doDeleteBtn.disabled = false; doDeleteBtn.classList.remove('opacity-60'); }
+    else { doDeleteBtn.disabled = true; doDeleteBtn.classList.add('opacity-60'); }
+  });
+
+  doDeleteBtn.addEventListener('click', async ()=> {
+    if (!confirm('Delete this token and all its files? This is irreversible.')) return;
+    try {
+      const res = await fetch('/api/delete-token', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token }) });
+      if (!res.ok) throw new Error(await res.text());
+      showMsg('Token deleted','success');
+      location.href = 'index.html';
+    } catch (e) {
+      console.error(e);
+      deleteStatus.textContent = 'Delete failed';
+      showMsg('Delete failed','error');
+    }
+  });
+}
+
+/* =========================
+   Initialization: load files & storage
+========================= */
+fetchFiles();
+refreshStorageSummary();
+
+/* =========================
+   Expose close feature control: clicking outside right panel closes it
+========================= */
+document.addEventListener('click', (e) => {
+  // if click is inside a nav-btn or inside featurePanel, ignore
+  if (e.target.closest('.nav-btn') || e.target.closest('#featurePanel')) return;
+  // else close panel
+  if (featurePanel.classList.contains('active')) closeFeaturePanel();
+});
+
+/* =========================
+   Make lucide icons show (initial) and whenever we inject UI
+========================= */
 lucide.createIcons();
 </script>
-
-<!-- ================= EXISTING FEATURE DOMS (UNCHANGED) ================= -->
-<!--
-Place your existing:
-- token search UI
-- merge UI
-- delete token UI
-HERE with ids:
-searchFeature
-mergeFeature
-deleteFeature
-(no changes inside)
--->
-
 </body>
 </html>
