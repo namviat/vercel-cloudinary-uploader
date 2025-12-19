@@ -49,16 +49,43 @@
   .profile-token{ font-size:12px; color:#64748b; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   /* hide labels when collapsed */
-  .sidebar.collapsed .label{ opacity:0; transform:translateX(-8px); pointer-events:none; }
-  .label{ transition:opacity .18s, transform .18s; }
+  .label {
+  transition: opacity .2s ease, transform .2s ease;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.sidebar.collapsed .label {
+  opacity: 0;
+  transform: translateX(-10px);
+  pointer-events: none;
+  position: absolute; 
+}
 
   /* NAV */
   .nav{ padding:8px 12px; flex:1; /* vertical only */ overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .nav-item{ position:relative; margin-bottom:8px; }
-  .nav-btn{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; color:#475569; cursor:pointer; transition:background .18s, color .18s; }
-  .nav-btn:hover{ background:#f8fafc; color:#0f172a; }
-  .nav-icon{ width:20px; height:20px; flex:0 0 20px; color:inherit; }
-
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px; 
+  padding: 12px 16px;
+  border-radius: 10px;
+  color: #475569;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+  white-space: nowrap;
+  overflow: hidden;
+}  .nav-btn:hover{ background:#f8fafc; color:#0f172a; }
+.nav-icon {
+  width: 24px;   
+  height: 24px;
+  flex: 0 0 24px; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
   /* We'll use JS-floating tooltip (so no overflow) */
   .tooltip-floater{ position:fixed; background:#0f172a; color:#fff; padding:8px 10px; border-radius:8px; font-size:13px; pointer-events:none; transform-origin:left center; opacity:0; transition:opacity .14s, transform .14s; z-index:9999; box-shadow:0 8px 20px rgba(2,6,23,0.18); white-space:nowrap; }
 
@@ -73,8 +100,13 @@
 
   /* Collapsed / expanded storage UI */
   .storage-expanded { display:block; }
-  .storage-collapsed { display:none; justify-content:center; padding:8px 0; }
-  .sidebar.collapsed .storage-expanded { display:none; }
+.storage-collapsed {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 0;
+  width: 100%;
+}  .sidebar.collapsed .storage-expanded { display:none; }
   .sidebar.collapsed .storage-collapsed { display:flex; }
 
   /* logout */
