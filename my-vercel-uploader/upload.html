@@ -399,6 +399,24 @@ async function refreshStorageSummary() {
   }
 }
 
+  async function loadTokenProfile() {
+  const res = await fetch(`/api/token?token=${encodeURIComponent(token)}`);
+  const data = await res.json();
+
+  // name
+  document.getElementById('profileName').textContent = data.name;
+
+  // avatar
+  const avatarUrl =
+    `https://api.dicebear.com/7.x/${data.avatar.style}/svg?seed=${data.avatar.seed}`;
+
+  document.getElementById('avatarPreview').innerHTML =
+    `<img src="${avatarUrl}" class="w-full h-full rounded-lg" />`;
+}
+
+loadTokenProfile();
+
+  
 function formatSize(bytes) {
   if (!bytes && bytes !== 0) return '—';
   const gb = bytes / (1024 * 1024 * 1024);
