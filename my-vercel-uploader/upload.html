@@ -10,9 +10,6 @@
 <!-- Lucide icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
-<!-- =========================
-     Step 1: Styles (find storage-related CSS here)
-     ========================= -->
 <style>
   :root{
     --sidebar-w:270px;
@@ -22,26 +19,27 @@
     --bg:#f5f7fb;
   }
 
-  html,body{height:100%; margin:0; font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial; background:var(--bg); color:#0f172a; -webkit-font-smoothing:antialiased;}
-  *,*:before,*:after{box-sizing:border-box;}
+  /* base */
+  html,body{height:100%;}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:#0f172a;-webkit-font-smoothing:antialiased;}
 
-  /* --------------------
-     SIDEBAR base
-     -------------------- */
+  /* Ensure children don't cause overflow */
+  .sidebar, .sidebar * { box-sizing: border-box; max-width: 100%; }
+
+  /* SIDEBAR */
   .sidebar{
     position:fixed; left:16px; top:16px; bottom:16px;
     width:var(--sidebar-w); background:#fff; border-radius:14px;
     box-shadow:0 12px 36px rgba(2,6,23,0.06);
     transition:width .45s cubic-bezier(.175,.885,.32,1.1), box-shadow .18s;
     z-index:60; display:flex; flex-direction:column;
-    /* Step 1a: Prevent horizontal scrollbar (important) */
-    overflow-x:hidden;      /* NEVER allow horizontal scroll */
-    overflow-y:auto;        /* vertical scroll allowed */
-    max-width:100%;
+    /* horizontal scroll explicitly disabled; vertical allowed */
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
   }
   .sidebar.collapsed{ width:var(--sidebar-collapsed-w); }
-
-  .sidebar * { max-width:100%; } /* Step 1b: ensure children won't overflow horizontally */
 
   .sidebar-header{ display:flex; gap:12px; align-items:center; padding:16px; }
   .avatar{ width:44px; height:44px; border-radius:10px; background:#eef2ff; display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151; flex-shrink:0; }
@@ -50,53 +48,34 @@
   .profile-name{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
   .profile-token{ font-size:12px; color:#64748b; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-  .sidebar.collapsed .label{ opacity:0; transform:translateX(-8px); pointer-events:none; transition:opacity .18s, transform .18s; }
+  /* hide labels when collapsed */
+  .sidebar.collapsed .label{ opacity:0; transform:translateX(-8px); pointer-events:none; }
   .label{ transition:opacity .18s, transform .18s; }
 
   /* NAV */
-  .nav{ padding:8px 12px; flex:1; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .nav{ padding:8px 12px; flex:1; /* vertical only */ overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .nav-item{ position:relative; margin-bottom:8px; }
   .nav-btn{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; color:#475569; cursor:pointer; transition:background .18s, color .18s; }
   .nav-btn:hover{ background:#f8fafc; color:#0f172a; }
   .nav-icon{ width:20px; height:20px; flex:0 0 20px; color:inherit; }
 
-  .tooltip{ position:absolute; left:100%; top:50%; transform:translate(8px,-50%); background:#0f172a; color:#fff; padding:6px 10px; border-radius:8px; font-size:12px; opacity:0; pointer-events:none; transition:.18s; }
-  .sidebar.collapsed .nav-item:hover .tooltip{ opacity:1; transform:translate(14px,-50%); }
+  /* We'll use JS-floating tooltip (so no overflow) */
+  .tooltip-floater{ position:fixed; background:#0f172a; color:#fff; padding:8px 10px; border-radius:8px; font-size:13px; pointer-events:none; transform-origin:left center; opacity:0; transition:opacity .14s, transform .14s; z-index:9999; box-shadow:0 8px 20px rgba(2,6,23,0.18); white-space:nowrap; }
 
-  /* --------------------
-     Step 2: Storage area (this is the critical area)
-     - storage-expanded shown when sidebar expanded
-     - storage-collapsed shows only cloud icon when collapsed
-     -------------------- */
-  .sidebar-footer{ padding:12px; border-top:1px solid rgba(2,6,23,0.03); display:flex; flex-direction:column; gap:8px; background:transparent; }
+  /* storage footer */
+  .sidebar-footer{ padding:12px; border-top:1px solid rgba(2,6,23,0.03); display:flex; flex-direction:column; gap:8px; }
+  .storage-top{ display:flex; align-items:center; gap:8px; justify-content:space-between; }
+  .storage-icon{ width:20px; height:20px; color:#475569; display:inline-flex; align-items:center; justify-content:center; }
+  .storage-text{ font-size:12px; color:#64748b; }
+  .storage-bar {width: 100%;height: 10px;background: rgba(2,6,23,0.08);border-radius: 999px;overflow: hidden; pointer-events:none;}
+  .storage-bar > span {display: block;height: 100%;max-width: 100%; width: 0%;}
+  .storage-fill{ height:100%; width:0%; background:linear-gradient(90deg,#6366f1,#06b6d4); transition:width .6s cubic-bezier(.2,.9,.2,1); }
+
+  /* Collapsed / expanded storage UI */
   .storage-expanded { display:block; }
   .storage-collapsed { display:none; justify-content:center; padding:8px 0; }
-
-  .storage-bar {
-    width:100%;
-    height:10px;
-    background:rgba(2,6,23,0.08);
-    border-radius:999px;
-    overflow:hidden;
-    pointer-events:none;  /* ensure there's no dragging or pointer events */
-    user-select:none;
-  }
-  .storage-bar > span {
-    display:block;
-    height:100%;
-    width:0%;
-    max-width:100%;
-    background:linear-gradient(90deg,#7c3aed,#06b6d4);
-    transition:width .6s ease;
-  }
-
-  /* show only icon when collapsed */
   .sidebar.collapsed .storage-expanded { display:none; }
   .sidebar.collapsed .storage-collapsed { display:flex; }
-
-  /* optional: visually hide horizontal scroll on webkit */
-  .sidebar::-webkit-scrollbar { height:0px; width:8px; }
-  .sidebar::-webkit-scrollbar-thumb { background: rgba(2,6,23,0.06); border-radius:8px; }
 
   /* logout */
   .logout-row{ padding:10px 12px; }
@@ -105,38 +84,46 @@
   .app{ margin-left:calc(var(--sidebar-w) + var(--gap)); padding:28px 32px; transition:margin .25s ease; }
   .sidebar.collapsed ~ .app{ margin-left:calc(var(--sidebar-collapsed-w) + var(--gap)); }
 
+  /* when feature open, add right margin to app to avoid overlap */
   .feature-open .app{ margin-right:calc(var(--feature-w) + var(--gap)); transition:margin .25s ease; }
 
-  /* MAIN area */
+  /* MAIN */
   .upload-box{ border:2px dashed #c7d2fe; background:#fff; border-radius:12px; padding:44px; text-align:center; cursor:pointer; transition:box-shadow .18s, transform .18s, background .18s; }
   .upload-box:hover{ background:#fbfdff; box-shadow:0 10px 30px rgba(2,6,23,0.05); }
-
   .file-card{ background:#fff; border-radius:10px; padding:12px; box-shadow:0 6px 18px rgba(2,6,23,0.04); position:relative; border:1px solid rgba(2,6,23,0.03); transition:transform .12s ease; }
   .file-card:hover{ transform:translateY(-4px); }
   .file-actions{ position:absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:opacity .12s; }
   .file-card:hover .file-actions{ opacity:1; }
   .file-action-btn{ width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.04); cursor:pointer; }
 
+  /* feature panel */
   .feature-panel{ position:fixed; right:20px; top:16px; bottom:16px; width:var(--feature-w); padding:16px; background:#fff; border-radius:12px; box-shadow:0 14px 40px rgba(2,6,23,0.06); display:none; overflow:auto; z-index:55; transition:transform .25s cubic-bezier(.2,.9,.2,1); }
   .feature-panel.active{ display:block; }
 
+  /* remove transforms on nav hover to stop labels moving (user complained) */
+  .nav-btn:hover{ transform:none; }
+
+  /* small screens */
   @media (max-width:1024px){
     .sidebar{ left:10px; top:10px; bottom:10px; width:var(--sidebar-collapsed-w); }
     .app{ margin-left:calc(var(--sidebar-collapsed-w) + var(--gap)); padding:16px; }
     .feature-panel{ display:none !important; }
   }
+
+  /* hide horizontal scrollbars visually (extra) */
+  .sidebar::-webkit-scrollbar { height: 0; width: 8px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(2,6,23,0.06); border-radius: 999px; }
 </style>
 </head>
 <body>
 
-<!-- =========================
-     SIDEBAR
-     (Step 1: storage HTML is here; see "storage-expanded" and "storage-collapsed")
-     ========================= -->
+<!-- FLOATING TOOLTIP (attached to body via JS) -->
+<div id="tooltipFloater" class="tooltip-floater" style="display:none;"></div>
+
+<!-- SIDEBAR -->
 <aside id="sidebar" class="sidebar collapsed" aria-label="Qloud sidebar">
   <div class="sidebar-header">
     <div class="avatar" id="avatarPreview">U</div>
-
     <div class="profile-block label" style="min-width:0;">
       <div class="profile-name-row">
         <div id="profileName" class="profile-name" title="Click pencil to edit">Profile</div>
@@ -146,46 +133,36 @@
     </div>
   </div>
 
-  <nav class="nav" role="navigation" aria-label="Features">
-    <div class="nav-item">
+  <nav id="nav" class="nav" role="navigation" aria-label="Features">
+    <div class="nav-item" data-tooltip="Token Search">
       <div class="nav-btn feature-btn" data-feature="search" role="button" tabindex="0">
         <i data-lucide="search" class="nav-icon"></i>
         <div class="label">Token Search</div>
       </div>
-      <div class="tooltip">Token Search</div>
     </div>
 
-    <div class="nav-item">
+    <div class="nav-item" data-tooltip="Token Merge">
       <div class="nav-btn feature-btn" data-feature="merge" role="button" tabindex="0">
         <i data-lucide="shuffle" class="nav-icon"></i>
         <div class="label">Token Merge</div>
       </div>
-      <div class="tooltip">Token Merge</div>
     </div>
 
-    <div class="nav-item">
+    <div class="nav-item" data-tooltip="Delete Token">
       <div class="nav-btn feature-btn" data-feature="delete" role="button" tabindex="0">
         <i data-lucide="trash-2" class="nav-icon"></i>
         <div class="label">Delete Token</div>
       </div>
-      <div class="tooltip">Delete Token</div>
     </div>
   </nav>
 
-  <!-- ----------------------------
-       Step 2: STORAGE HTML (drop-in that matches index)
-       - storage-expanded visible when sidebar not collapsed
-       - storage-collapsed visible icon-only when collapsed
-       ---------------------------- -->
   <div class="sidebar-footer">
     <div class="storage-expanded label">
-      <div class="flex justify-between items-center mb-2">
-        <div class="text-xs text-slate-500">Global storage usage</div>
-        <div id="storageText" class="text-xs font-semibold">Loading…</div>
+      <div class="text-xs text-slate-500 mb-1">Global storage usage</div>
+      <div class="storage-bar">
+        <span id="storageFill" class="storage-fill"></span>
       </div>
-      <div class="storage-bar" aria-hidden="true">
-        <span id="storageFill" style="width:0%"></span>
-      </div>
+      <div id="storageText" class="text-xs text-slate-500 mt-1">Loading…</div>
     </div>
 
     <div class="storage-collapsed">
@@ -201,9 +178,7 @@
   </div>
 </aside>
 
-<!-- =========================
-     MAIN APP
-     ========================= -->
+<!-- APP (main) -->
 <main class="app" id="app">
   <div class="max-w-5xl mx-auto">
     <div id="msg" class="hidden mb-4"></div>
@@ -236,15 +211,9 @@
 
 <script>lucide.createIcons()</script>
 
-<!-- =========================
-     Step 3: JavaScript (look for "Step 3" comments)
-     - storage fetch logic is here and matches index.js logic
-     - sidebar hover/collapse and overflow fixes applied
-     ========================= -->
 <script>
 /* =========================
-   CONFIG
-   (unchanged)
+   CONFIG (unchanged)
 ========================= */
 const CLOUD_NAME = 'dzvz7kzin';
 const UPLOAD_PRESET = 'mycloud_unsigned';
@@ -256,6 +225,7 @@ document.getElementById('profileToken').textContent = token;
 
 /* UI refs */
 const sidebar = document.getElementById('sidebar');
+const nav = document.getElementById('nav');
 const app = document.getElementById('app');
 const featurePanel = document.getElementById('featurePanel');
 
@@ -276,15 +246,15 @@ const logoutBtn = document.getElementById('logoutBtn');
 const editNameBtn = document.getElementById('editNameBtn');
 let files = [];
 
-/* ---------------- Sidebar hover / collapse behavior (Step 3a) ---------------- */
+/* ---------------- Sidebar hover behavior ---------------- */
 function applySidebarHoverBehavior(){
   if (window.innerWidth >= 1024) sidebar.classList.add('collapsed'); else sidebar.classList.remove('collapsed');
 
   sidebar.addEventListener('mouseenter', ()=> {
-    if (window.innerWidth >= 1024) { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); lucide.createIcons(); }
+    if (window.innerWidth >= 1024) { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); }
   });
   sidebar.addEventListener('mouseleave', ()=> {
-    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); lucide.createIcons(); }
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); }
   });
   window.addEventListener('resize', ()=> {
     if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); }
@@ -293,17 +263,29 @@ function applySidebarHoverBehavior(){
 }
 applySidebarHoverBehavior();
 
-/* ---------------- Small helpers ---------------- */
+/* messages */
 function showMsg(text, type='info'){
   msgEl.textContent = text;
   msgEl.className = 'p-3 rounded mb-4 text-sm ' + (type==='success' ? 'bg-emerald-50 text-emerald-700' : type==='error' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700');
   msgEl.classList.remove('hidden');
   setTimeout(()=> msgEl.classList.add('hidden'), 2600);
 }
-function debounce(fn, wait=350){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this,args), wait); }; }
+
+/* file icon helper */
+function getFileIcon(publicId){
+  const ext = (publicId.split('.').pop() || '').toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
+  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
+  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
+  if (['pdf'].includes(ext)) return 'file-text';
+  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
+  return 'file';
+}
 
 /* =========================
    FILES: fetch / render / upload / delete / download
+   (unchanged back-end calls)
 ========================= */
 async function fetchFiles(){
   try {
@@ -315,17 +297,6 @@ async function fetchFiles(){
     console.error(err);
     showMsg('Failed to load files','error');
   }
-}
-
-function getFileIcon(publicId){
-  const ext = (publicId.split('.').pop() || '').toLowerCase();
-  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
-  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
-  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
-  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
-  if (['pdf'].includes(ext)) return 'file-text';
-  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
-  return 'file';
 }
 
 function renderFiles(){
@@ -354,11 +325,12 @@ function renderFiles(){
   lucide.createIcons();
 }
 
-/* UPLOAD */
+/* upload */
 uploadBox.addEventListener('click', ()=> fileInput.click());
 uploadBox.addEventListener('dragover', e=> { e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
 uploadBox.addEventListener('dragleave', ()=> uploadBox.classList.remove('ring-2','ring-indigo-200'));
 uploadBox.addEventListener('drop', e=> { e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
+
 fileInput.onchange = e => uploadFiles([...e.target.files]);
 
 async function uploadFiles(list){
@@ -405,17 +377,8 @@ async function forceDownload(url, filename){
 }
 
 /* =========================
-   Step 3: Storage summary logic (copied from index)
-   - formatSize and refresh function
-   - refresh on load and optionally every 60s
-   ========================= */
-function formatSize(bytes) {
-  const gb = bytes / (1024 * 1024 * 1024);
-  if (gb >= 1) return gb.toFixed(2) + ' GB';
-  const mb = bytes / (1024 * 1024);
-  return mb.toFixed(2) + ' MB';
-}
-
+   STORAGE SUMMARY (same as index)
+========================= */
 async function refreshStorageSummary() {
   try {
     const res = await fetch('/api/storage-summary');
@@ -423,29 +386,69 @@ async function refreshStorageSummary() {
 
     const data = await res.json();
 
-    // guard when server returns zero/undefined
-    const totalBytes = Number(data.totalBytes || data.total_bytes || 0);
-    const limitBytes = Number(data.limitBytes || data.limit_bytes || data.limit || 0);
+    const percent = Math.min(100, (data.totalBytes / data.limitBytes) * 100 || 0);
+    const usedText = formatSize(data.totalBytes);
+    const limitText = formatSize(data.limitBytes);
 
-    const percent = (limitBytes > 0) ? Math.min(100, Math.round(totalBytes / limitBytes * 100)) : 0;
-
-    document.getElementById('storageText').textContent =
-      `${formatSize(totalBytes)} / ${formatSize(limitBytes || 0)}`;
-
+    document.getElementById('storageText').textContent = `${usedText} / ${limitText}`;
     document.getElementById('storageFill').style.width = percent + '%';
-
   } catch (err) {
-    console.error('Storage summary error', err);
-    if (document.getElementById('storageText')) document.getElementById('storageText').textContent = 'Error';
-    if (document.getElementById('storageFill')) document.getElementById('storageFill').style.width = '0%';
+    console.error(err);
+    document.getElementById('storageText').textContent = 'Error';
+    document.getElementById('storageFill').style.width = '0%';
   }
+}
+
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return '—';
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return gb.toFixed(2) + ' GB';
+  const mb = bytes / (1024 * 1024);
+  return mb.toFixed(2) + ' MB';
 }
 refreshStorageSummary();
 setInterval(refreshStorageSummary, 60000);
 
 /* =========================
-   Feature panel control (unchanged)
+   TOOLTIP float (fix horizontal scroll problems)
+   - we place a single floating tooltip in body and position it on hover
 ========================= */
+const tooltipFloater = document.getElementById('tooltipFloater');
+
+function showTooltipFor(item) {
+  const text = item.getAttribute('data-tooltip') || '';
+  if (!text) return;
+  tooltipFloater.textContent = text;
+  tooltipFloater.style.display = 'block';
+  tooltipFloater.style.opacity = '0';
+  // compute position to the right of sidebar
+  const sidebarRect = sidebar.getBoundingClientRect();
+  const itemRect = item.getBoundingClientRect();
+  const top = Math.max(12, itemRect.top + (itemRect.height / 2) - (tooltipFloater.offsetHeight / 2));
+  const left = sidebarRect.right + 12; // 12px gap
+  tooltipFloater.style.top = `${top}px`;
+  tooltipFloater.style.left = `${left}px`;
+  // small show delay to allow measurement
+  requestAnimationFrame(()=> {
+    tooltipFloater.style.opacity = '1';
+    tooltipFloater.style.transform = 'translateX(0) scale(1)';
+  });
+}
+function hideTooltip() {
+  tooltipFloater.style.opacity = '0';
+  tooltipFloater.style.display = 'none';
+}
+
+/* wire up nav-item hover to show floating tooltip (only when collapsed) */
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mouseenter', ()=>{
+    if (!sidebar.classList.contains('collapsed')) return; // only show when collapsed
+    showTooltipFor(item);
+  });
+  item.addEventListener('mouseleave', hideTooltip);
+});
+
+/* ---------------- Feature panel control (unchanged) ---------------- */
 let activeFeature = null;
 function closeFeaturePanel(){
   featurePanel.classList.remove('active');
@@ -453,6 +456,7 @@ function closeFeaturePanel(){
   featurePanel.setAttribute('aria-hidden','true');
   document.documentElement.classList.remove('feature-open');
   activeFeature = null;
+  hideTooltip();
 }
 function openFeaturePanel(name){
   if (activeFeature === name){ closeFeaturePanel(); return; }
@@ -466,13 +470,19 @@ function openFeaturePanel(name){
   else if (name === 'delete') renderDeleteFeature();
   else featurePanel.innerHTML = '<div class="text-sm text-slate-500">Feature not implemented</div>';
 }
-featureButtons.forEach(btn => btn.addEventListener('click', ()=> openFeaturePanel(btn.dataset.feature)));
+featureButtons.forEach(btn => btn.addEventListener('click', (e)=> { e.stopPropagation(); openFeaturePanel(btn.dataset.feature); }));
 document.addEventListener('click', (e)=>{ if (e.target.closest('.nav-btn') || e.target.closest('#featurePanel')) return; if (featurePanel.classList.contains('active')) closeFeaturePanel(); });
 
 /* =========================
-   Token Search feature (unchanged logic)
-   see your existing backend endpoints
+   Token Search + Merge + Delete features
+   (unchanged backend calls; same code as before)
+   ... (we'll reuse your previous implementations)
 ========================= */
+
+/* Debounce utility */
+function debounce(fn, wait=350){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this,args), wait); }; }
+
+/* Render Search Feature */
 function renderSearchFeature(){
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-3">Token Search</h3>
@@ -548,7 +558,7 @@ function renderSearchFeature(){
                 });
                 if (!res.ok) throw new Error(await res.text());
                 showMsg('Copied file to current token','success');
-                fetchFiles(); // refresh current token files
+                fetchFiles();
               } catch (err) {
                 console.error('copy failed', err);
                 showMsg('Copy failed','error');
@@ -571,9 +581,7 @@ function renderSearchFeature(){
   si.addEventListener('input', (ev)=> doSearch(ev.target.value.trim()));
 }
 
-/* =========================
-   Merge feature (unchanged)
-========================= */
+/* Merge feature (unchanged functionality) */
 function renderMergeFeature(){
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-2">Merge tokens into <strong>${token}</strong></h3>
@@ -673,19 +681,9 @@ function renderMergeFeature(){
       showMsg('Merge failed','error');
     }
   });
-
-  const obs = new MutationObserver(()=> {
-    if (!featurePanel.classList.contains('active')) {
-      window.removeEventListener('qloud-token-selected', tokenSelectedHandler);
-      obs.disconnect();
-    }
-  });
-  obs.observe(featurePanel, { attributes:true, attributeFilter:['class'] });
 }
 
-/* =========================
-   Delete feature
-========================= */
+/* Delete feature UI */
 function renderDeleteFeature(){
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-2">Delete token</h3>
@@ -724,7 +722,7 @@ function renderDeleteFeature(){
 }
 
 /* =========================
-   Profile name inline edit (Step 3b)
+   Profile edit (unchanged)
 ========================= */
 (function setupProfileEdit(){
   const nameEl = document.getElementById('profileName');
