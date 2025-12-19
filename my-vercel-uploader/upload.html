@@ -5,324 +5,761 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Qloud — Upload</title>
 
+<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Lucide icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
+<!-- =========================
+     Step 1: Styles (find storage-related CSS here)
+     ========================= -->
 <style>
-:root{
-  --sidebar-w:270px;
-  --sidebar-collapsed-w:88px;
-  --feature-w:380px;
-  --gap:28px;
-  --bg:#f5f7fb;
-}
+  :root{
+    --sidebar-w:270px;
+    --sidebar-collapsed-w:88px;
+    --feature-w:380px;
+    --gap:32px;
+    --bg:#f5f7fb;
+  }
 
-html,body{height:100%;}
-body{
-  margin:0;
-  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;
-  background:var(--bg);
-  color:#0f172a;
-}
+  html,body{height:100%; margin:0; font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial; background:var(--bg); color:#0f172a; -webkit-font-smoothing:antialiased;}
+  *,*:before,*:after{box-sizing:border-box;}
 
-/* ---------------- SIDEBAR ---------------- */
-.sidebar{
-  position:fixed;
-  inset:16px auto 16px 16px;
-  width:var(--sidebar-w);
-  background:#fff;
-  border-radius:14px;
-  box-shadow:0 12px 36px rgba(2,6,23,.06);
-  display:flex;
-  flex-direction:column;
-  overflow-y:auto;
-  overflow-x:hidden; /* 🔒 kill horizontal scrollbar */
-  transition:width .45s cubic-bezier(.175,.885,.32,1.1);
-  z-index:50;
-}
-.sidebar.collapsed{ width:var(--sidebar-collapsed-w); }
+  /* --------------------
+     SIDEBAR base
+     -------------------- */
+  .sidebar{
+    position:fixed; left:16px; top:16px; bottom:16px;
+    width:var(--sidebar-w); background:#fff; border-radius:14px;
+    box-shadow:0 12px 36px rgba(2,6,23,0.06);
+    transition:width .45s cubic-bezier(.175,.885,.32,1.1), box-shadow .18s;
+    z-index:60; display:flex; flex-direction:column;
+    /* Step 1a: Prevent horizontal scrollbar (important) */
+    overflow-x:hidden;      /* NEVER allow horizontal scroll */
+    overflow-y:auto;        /* vertical scroll allowed */
+    max-width:100%;
+  }
+  .sidebar.collapsed{ width:var(--sidebar-collapsed-w); }
 
-/* hide scrollbar */
-.sidebar::-webkit-scrollbar{ width:6px; }
-.sidebar::-webkit-scrollbar-thumb{ background:transparent; }
+  .sidebar * { max-width:100%; } /* Step 1b: ensure children won't overflow horizontally */
 
-/* header */
-.sidebar-header{
-  display:flex;
-  gap:12px;
-  padding:16px;
-  align-items:center;
-}
-.avatar{
-  width:44px;height:44px;border-radius:10px;
-  background:#eef2ff;
-  display:flex;align-items:center;justify-content:center;
-  font-weight:700;color:#374151;
-  flex-shrink:0;
-}
-.profile-block{ min-width:0; }
-.profile-name-row{ display:flex; gap:6px; align-items:center; }
-.profile-name{
-  font-weight:600;
-  max-width:150px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.profile-token{
-  font-size:12px;
-  color:#64748b;
-  max-width:160px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
+  .sidebar-header{ display:flex; gap:12px; align-items:center; padding:16px; }
+  .avatar{ width:44px; height:44px; border-radius:10px; background:#eef2ff; display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151; flex-shrink:0; }
+  .profile-block{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .profile-name-row{ display:flex; align-items:center; gap:8px; }
+  .profile-name{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
+  .profile-token{ font-size:12px; color:#64748b; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* collapse labels */
-.label{ transition:.2s; }
-.sidebar.collapsed .label{
-  opacity:0;
-  transform:translateX(-6px);
-  pointer-events:none;
-}
+  .sidebar.collapsed .label{ opacity:0; transform:translateX(-8px); pointer-events:none; transition:opacity .18s, transform .18s; }
+  .label{ transition:opacity .18s, transform .18s; }
 
-/* ---------------- NAV ---------------- */
-.nav{ padding:8px 12px; flex:1; }
-.nav-item{ position:relative; margin-bottom:8px; }
-.nav-btn{
-  display:flex; align-items:center; gap:12px;
-  padding:10px;
-  border-radius:10px;
-  color:#475569;
-  cursor:pointer;
-}
-.nav-btn:hover{ background:#f8fafc; color:#0f172a; }
-.nav-icon{ width:20px;height:20px; }
+  /* NAV */
+  .nav{ padding:8px 12px; flex:1; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .nav-item{ position:relative; margin-bottom:8px; }
+  .nav-btn{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; color:#475569; cursor:pointer; transition:background .18s, color .18s; }
+  .nav-btn:hover{ background:#f8fafc; color:#0f172a; }
+  .nav-icon{ width:20px; height:20px; flex:0 0 20px; color:inherit; }
 
-/* tooltip */
-.tooltip{
-  position:absolute;
-  left:100%; top:50%;
-  transform:translate(8px,-50%);
-  background:#0f172a;
-  color:#fff;
-  padding:6px 10px;
-  border-radius:8px;
-  font-size:12px;
-  opacity:0;
-  pointer-events:none;
-  transition:.2s;
-}
-.sidebar.collapsed .nav-item:hover .tooltip{
-  opacity:1;
-  transform:translate(14px,-50%);
-}
+  .tooltip{ position:absolute; left:100%; top:50%; transform:translate(8px,-50%); background:#0f172a; color:#fff; padding:6px 10px; border-radius:8px; font-size:12px; opacity:0; pointer-events:none; transition:.18s; }
+  .sidebar.collapsed .nav-item:hover .tooltip{ opacity:1; transform:translate(14px,-50%); }
 
-/* ---------------- STORAGE ---------------- */
-.sidebar-footer{
-  padding:12px;
-  border-top:1px solid rgba(2,6,23,.04);
-}
-.storage-expanded{ display:block; }
-.storage-collapsed{ display:none; justify-content:center; }
+  /* --------------------
+     Step 2: Storage area (this is the critical area)
+     - storage-expanded shown when sidebar expanded
+     - storage-collapsed shows only cloud icon when collapsed
+     -------------------- */
+  .sidebar-footer{ padding:12px; border-top:1px solid rgba(2,6,23,0.03); display:flex; flex-direction:column; gap:8px; background:transparent; }
+  .storage-expanded { display:block; }
+  .storage-collapsed { display:none; justify-content:center; padding:8px 0; }
 
-.sidebar.collapsed .storage-expanded{ display:none; }
-.sidebar.collapsed .storage-collapsed{ display:flex; }
+  .storage-bar {
+    width:100%;
+    height:10px;
+    background:rgba(2,6,23,0.08);
+    border-radius:999px;
+    overflow:hidden;
+    pointer-events:none;  /* ensure there's no dragging or pointer events */
+    user-select:none;
+  }
+  .storage-bar > span {
+    display:block;
+    height:100%;
+    width:0%;
+    max-width:100%;
+    background:linear-gradient(90deg,#7c3aed,#06b6d4);
+    transition:width .6s ease;
+  }
 
-.storage-bar{
-  width:100%;
-  height:10px;
-  background:rgba(2,6,23,.08);
-  border-radius:999px;
-  overflow:hidden;
-}
-.storage-fill{
-  height:100%;
-  width:0%;
-  background:linear-gradient(90deg,#6366f1,#06b6d4);
-  transition:width .6s cubic-bezier(.2,.9,.2,1);
-}
+  /* show only icon when collapsed */
+  .sidebar.collapsed .storage-expanded { display:none; }
+  .sidebar.collapsed .storage-collapsed { display:flex; }
 
-/* ---------------- APP ---------------- */
-.app{
-  margin-left:calc(var(--sidebar-w) + var(--gap));
-  padding:28px 32px;
-  transition:margin .3s ease;
-}
-.sidebar.collapsed ~ .app{
-  margin-left:calc(var(--sidebar-collapsed-w) + var(--gap));
-}
+  /* optional: visually hide horizontal scroll on webkit */
+  .sidebar::-webkit-scrollbar { height:0px; width:8px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(2,6,23,0.06); border-radius:8px; }
 
-/* feature open */
-.feature-open .app{
-  margin-right:calc(var(--feature-w) + var(--gap));
-}
+  /* logout */
+  .logout-row{ padding:10px 12px; }
 
-/* ---------------- UPLOAD ---------------- */
-.upload-box{
-  border:2px dashed #c7d2fe;
-  background:#fff;
-  border-radius:12px;
-  padding:44px;
-  text-align:center;
-  cursor:pointer;
-}
-.upload-box:hover{
-  background:#fbfdff;
-  box-shadow:0 10px 30px rgba(2,6,23,.05);
-}
+  /* APP layout */
+  .app{ margin-left:calc(var(--sidebar-w) + var(--gap)); padding:28px 32px; transition:margin .25s ease; }
+  .sidebar.collapsed ~ .app{ margin-left:calc(var(--sidebar-collapsed-w) + var(--gap)); }
 
-/* ---------------- FILES ---------------- */
-.file-card{
-  background:#fff;
-  border-radius:10px;
-  padding:12px;
-  border:1px solid rgba(2,6,23,.04);
-  position:relative;
-}
-.file-actions{
-  position:absolute; top:8px; right:8px;
-  display:flex; gap:6px;
-  opacity:0;
-}
-.file-card:hover .file-actions{ opacity:1; }
+  .feature-open .app{ margin-right:calc(var(--feature-w) + var(--gap)); transition:margin .25s ease; }
 
-/* ---------------- FEATURE PANEL ---------------- */
-.feature-panel{
-  position:fixed;
-  right:16px; top:16px; bottom:16px;
-  width:var(--feature-w);
-  background:#fff;
-  border-radius:14px;
-  box-shadow:0 14px 40px rgba(2,6,23,.06);
-  padding:16px;
-  display:none;
-  overflow:auto;
-  z-index:40;
-}
-.feature-panel.active{ display:block; }
+  /* MAIN area */
+  .upload-box{ border:2px dashed #c7d2fe; background:#fff; border-radius:12px; padding:44px; text-align:center; cursor:pointer; transition:box-shadow .18s, transform .18s, background .18s; }
+  .upload-box:hover{ background:#fbfdff; box-shadow:0 10px 30px rgba(2,6,23,0.05); }
+
+  .file-card{ background:#fff; border-radius:10px; padding:12px; box-shadow:0 6px 18px rgba(2,6,23,0.04); position:relative; border:1px solid rgba(2,6,23,0.03); transition:transform .12s ease; }
+  .file-card:hover{ transform:translateY(-4px); }
+  .file-actions{ position:absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:opacity .12s; }
+  .file-card:hover .file-actions{ opacity:1; }
+  .file-action-btn{ width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.04); cursor:pointer; }
+
+  .feature-panel{ position:fixed; right:20px; top:16px; bottom:16px; width:var(--feature-w); padding:16px; background:#fff; border-radius:12px; box-shadow:0 14px 40px rgba(2,6,23,0.06); display:none; overflow:auto; z-index:55; transition:transform .25s cubic-bezier(.2,.9,.2,1); }
+  .feature-panel.active{ display:block; }
+
+  @media (max-width:1024px){
+    .sidebar{ left:10px; top:10px; bottom:10px; width:var(--sidebar-collapsed-w); }
+    .app{ margin-left:calc(var(--sidebar-collapsed-w) + var(--gap)); padding:16px; }
+    .feature-panel{ display:none !important; }
+  }
 </style>
 </head>
-
 <body>
 
-<!-- SIDEBAR -->
-<aside id="sidebar" class="sidebar collapsed">
+<!-- =========================
+     SIDEBAR
+     (Step 1: storage HTML is here; see "storage-expanded" and "storage-collapsed")
+     ========================= -->
+<aside id="sidebar" class="sidebar collapsed" aria-label="Qloud sidebar">
   <div class="sidebar-header">
-    <div class="avatar">U</div>
-    <div class="profile-block label">
+    <div class="avatar" id="avatarPreview">U</div>
+
+    <div class="profile-block label" style="min-width:0;">
       <div class="profile-name-row">
-        <div id="profileName" class="profile-name">Profile</div>
-        <button id="editNameBtn" class="hidden"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+        <div id="profileName" class="profile-name" title="Click pencil to edit">Profile</div>
+        <button id="editNameBtn" class="text-slate-400 hidden" title="Edit name"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
       </div>
-      <div id="profileToken" class="profile-token"></div>
+      <div id="profileToken" class="profile-token">token: ...</div>
     </div>
   </div>
 
-  <nav class="nav">
+  <nav class="nav" role="navigation" aria-label="Features">
     <div class="nav-item">
-      <div class="nav-btn feature-btn" data-feature="search">
-        <i data-lucide="search" class="nav-icon"></i><span class="label">Token Search</span>
+      <div class="nav-btn feature-btn" data-feature="search" role="button" tabindex="0">
+        <i data-lucide="search" class="nav-icon"></i>
+        <div class="label">Token Search</div>
       </div>
       <div class="tooltip">Token Search</div>
     </div>
 
     <div class="nav-item">
-      <div class="nav-btn feature-btn" data-feature="merge">
-        <i data-lucide="shuffle" class="nav-icon"></i><span class="label">Token Merge</span>
+      <div class="nav-btn feature-btn" data-feature="merge" role="button" tabindex="0">
+        <i data-lucide="shuffle" class="nav-icon"></i>
+        <div class="label">Token Merge</div>
       </div>
       <div class="tooltip">Token Merge</div>
     </div>
 
     <div class="nav-item">
-      <div class="nav-btn feature-btn" data-feature="delete">
-        <i data-lucide="trash-2" class="nav-icon"></i><span class="label">Delete Token</span>
+      <div class="nav-btn feature-btn" data-feature="delete" role="button" tabindex="0">
+        <i data-lucide="trash-2" class="nav-icon"></i>
+        <div class="label">Delete Token</div>
       </div>
       <div class="tooltip">Delete Token</div>
     </div>
   </nav>
 
+  <!-- ----------------------------
+       Step 2: STORAGE HTML (drop-in that matches index)
+       - storage-expanded visible when sidebar not collapsed
+       - storage-collapsed visible icon-only when collapsed
+       ---------------------------- -->
   <div class="sidebar-footer">
     <div class="storage-expanded label">
-      <div class="text-xs text-slate-500 mb-1">Global storage usage</div>
-      <div class="storage-bar"><div id="storageFill" class="storage-fill"></div></div>
-      <div id="storageText" class="text-xs text-slate-500 mt-1">Loading…</div>
+      <div class="flex justify-between items-center mb-2">
+        <div class="text-xs text-slate-500">Global storage usage</div>
+        <div id="storageText" class="text-xs font-semibold">Loading…</div>
+      </div>
+      <div class="storage-bar" aria-hidden="true">
+        <span id="storageFill" style="width:0%"></span>
+      </div>
     </div>
+
     <div class="storage-collapsed">
       <i data-lucide="cloud" class="w-5 h-5 text-slate-500"></i>
     </div>
   </div>
 
-  <div class="p-3">
-    <div id="logoutBtn" class="nav-btn">
-      <i data-lucide="log-out" class="nav-icon"></i><span class="label">Logout</span>
+  <div class="logout-row">
+    <div id="logoutBtn" class="nav-btn" role="button" tabindex="0">
+      <i data-lucide="log-out" class="nav-icon"></i>
+      <div class="label">Logout</div>
     </div>
   </div>
 </aside>
 
-<!-- MAIN -->
-<main id="app" class="app">
+<!-- =========================
+     MAIN APP
+     ========================= -->
+<main class="app" id="app">
   <div class="max-w-5xl mx-auto">
-    <div id="uploadBox" class="upload-box">
-      <input id="fileInput" type="file" multiple hidden>
-      ☁️<div class="font-semibold mt-2">Click or drag & drop files</div>
-      <div class="text-sm text-slate-500">Private to this token</div>
+    <div id="msg" class="hidden mb-4"></div>
+
+    <div id="uploadBox" class="upload-box card">
+      <input id="fileInput" type="file" multiple hidden />
+      <div class="text-4xl mb-2">☁️</div>
+      <div class="font-semibold">Click or drag & drop files here</div>
+      <div class="text-sm text-slate-500 mt-1">Files are private to this token</div>
+    </div>
+
+    <div id="progressWrap" class="hidden mt-4">
+      <div class="w-full bg-slate-100 h-2 rounded overflow-hidden">
+        <div id="progressFill" class="h-2 bg-gradient-to-r from-indigo-500 to-cyan-400" style="width:0%"></div>
+      </div>
+      <div id="statusText" class="text-xs text-slate-500 mt-1"></div>
     </div>
 
     <section class="mt-6">
-      <h2 class="font-semibold mb-3">Files <span id="count" class="text-slate-500"></span></h2>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">Files <span id="count" class="text-sm text-slate-500"></span></h2>
+      </div>
       <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
     </section>
   </div>
 </main>
 
-<!-- FEATURE PANEL -->
-<aside id="featurePanel" class="feature-panel"></aside>
+<!-- RIGHT FEATURE PANEL -->
+<aside id="featurePanel" class="feature-panel" aria-hidden="true"></aside>
 
+<script>lucide.createIcons()</script>
+
+<!-- =========================
+     Step 3: JavaScript (look for "Step 3" comments)
+     - storage fetch logic is here and matches index.js logic
+     - sidebar hover/collapse and overflow fixes applied
+     ========================= -->
 <script>
-lucide.createIcons();
+/* =========================
+   CONFIG
+   (unchanged)
+========================= */
+const CLOUD_NAME = 'dzvz7kzin';
+const UPLOAD_PRESET = 'mycloud_unsigned';
+const BASE_FOLDER = 'mycloud';
 
-/* ---------- BASIC BOOTSTRAP ---------- */
 const token = new URLSearchParams(location.search).get('token');
-if(!token) location.href='index.html';
+if (!token) location.href = 'index.html';
 document.getElementById('profileToken').textContent = token;
 
-/* sidebar hover */
+/* UI refs */
 const sidebar = document.getElementById('sidebar');
-const editBtn = document.getElementById('editNameBtn');
-sidebar.addEventListener('mouseenter',()=>{ sidebar.classList.remove('collapsed'); editBtn.classList.remove('hidden'); });
-sidebar.addEventListener('mouseleave',()=>{ sidebar.classList.add('collapsed'); editBtn.classList.add('hidden'); });
-
-/* storage summary (same as index) */
-async function refreshStorage(){
-  try{
-    const r = await fetch('/api/storage-summary');
-    const d = await r.json();
-    const pct = Math.min(100,(d.totalBytes/d.limitBytes)*100);
-    storageFill.style.width = pct+'%';
-    storageText.textContent = `${(d.totalBytes/1e6).toFixed(2)} MB / ${(d.limitBytes/1e9).toFixed(2)} GB`;
-  }catch{ storageText.textContent='Error'; }
-}
-refreshStorage(); setInterval(refreshStorage,60000);
-
-/* feature panel toggle */
+const app = document.getElementById('app');
 const featurePanel = document.getElementById('featurePanel');
-document.querySelectorAll('.feature-btn').forEach(b=>{
-  b.onclick=()=>{
-    document.documentElement.classList.add('feature-open');
-    featurePanel.classList.add('active');
-    featurePanel.innerHTML = `<div class="text-slate-500">Feature: ${b.dataset.feature}</div>`;
-  };
-});
-document.addEventListener('click',e=>{
-  if(!e.target.closest('.feature-btn') && !e.target.closest('#featurePanel')){
-    featurePanel.classList.remove('active');
-    document.documentElement.classList.remove('feature-open');
+
+const uploadBox = document.getElementById('uploadBox');
+const fileInput = document.getElementById('fileInput');
+const fileGrid = document.getElementById('fileGrid');
+const countEl = document.getElementById('count');
+const msgEl = document.getElementById('msg');
+const progressWrap = document.getElementById('progressWrap');
+const progressFill = document.getElementById('progressFill');
+const statusText = document.getElementById('statusText');
+
+const storageFill = document.getElementById('storageFill');
+const storageText = document.getElementById('storageText');
+
+const featureButtons = document.querySelectorAll('.feature-btn');
+const logoutBtn = document.getElementById('logoutBtn');
+const editNameBtn = document.getElementById('editNameBtn');
+let files = [];
+
+/* ---------------- Sidebar hover / collapse behavior (Step 3a) ---------------- */
+function applySidebarHoverBehavior(){
+  if (window.innerWidth >= 1024) sidebar.classList.add('collapsed'); else sidebar.classList.remove('collapsed');
+
+  sidebar.addEventListener('mouseenter', ()=> {
+    if (window.innerWidth >= 1024) { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); lucide.createIcons(); }
+  });
+  sidebar.addEventListener('mouseleave', ()=> {
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); lucide.createIcons(); }
+  });
+  window.addEventListener('resize', ()=> {
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); }
+    else { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); }
+  });
+}
+applySidebarHoverBehavior();
+
+/* ---------------- Small helpers ---------------- */
+function showMsg(text, type='info'){
+  msgEl.textContent = text;
+  msgEl.className = 'p-3 rounded mb-4 text-sm ' + (type==='success' ? 'bg-emerald-50 text-emerald-700' : type==='error' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700');
+  msgEl.classList.remove('hidden');
+  setTimeout(()=> msgEl.classList.add('hidden'), 2600);
+}
+function debounce(fn, wait=350){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this,args), wait); }; }
+
+/* =========================
+   FILES: fetch / render / upload / delete / download
+========================= */
+async function fetchFiles(){
+  try {
+    const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
+    const data = await res.json();
+    files = (data.resources || []).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+    renderFiles();
+  } catch (err) {
+    console.error(err);
+    showMsg('Failed to load files','error');
   }
-});
+}
+
+function getFileIcon(publicId){
+  const ext = (publicId.split('.').pop() || '').toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
+  if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
+  if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
+  if (['pdf'].includes(ext)) return 'file-text';
+  if (['txt','md','json','js','html','css'].includes(ext)) return 'file-code';
+  return 'file';
+}
+
+function renderFiles(){
+  countEl.textContent = `(${files.length})`;
+  fileGrid.innerHTML = '';
+  if (!files.length) { fileGrid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-8">No files uploaded yet</div>'; return; }
+  files.forEach(f=>{
+    const name = f.public_id.split('/').pop();
+    const size = (f.bytes / 1024 / 1024).toFixed(2);
+    const icon = getFileIcon(f.public_id);
+    const card = document.createElement('div');
+    card.className = 'file-card';
+    card.innerHTML = `
+      <div class="file-actions">
+        <button class="file-action-btn download-btn" title="Download"><i data-lucide="download" class="w-4 h-4"></i></button>
+        <button class="file-action-btn delete-btn" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+      </div>
+      <div class="text-3xl mb-2 text-indigo-500"><i data-lucide="${icon}"></i></div>
+      <div class="font-semibold truncate">${name}</div>
+      <div class="text-xs text-slate-500 mt-1">${size} MB</div>
+    `;
+    card.querySelector('.download-btn').onclick = ()=> forceDownload(f.secure_url, name);
+    card.querySelector('.delete-btn').onclick = ()=> deleteFile(f.public_id);
+    fileGrid.appendChild(card);
+  });
+  lucide.createIcons();
+}
+
+/* UPLOAD */
+uploadBox.addEventListener('click', ()=> fileInput.click());
+uploadBox.addEventListener('dragover', e=> { e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
+uploadBox.addEventListener('dragleave', ()=> uploadBox.classList.remove('ring-2','ring-indigo-200'));
+uploadBox.addEventListener('drop', e=> { e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
+fileInput.onchange = e => uploadFiles([...e.target.files]);
+
+async function uploadFiles(list){
+  if (!list.length) return;
+  progressWrap.classList.remove('hidden');
+  for (let i=0;i<list.length;i++){
+    const fd = new FormData();
+    fd.append('file', list[i]);
+    fd.append('upload_preset', UPLOAD_PRESET);
+    fd.append('folder', `${BASE_FOLDER}/${token}`);
+    statusText.textContent = `Uploading ${list[i].name}`;
+    progressFill.style.width = ((i+1)/list.length*100)+'%';
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method:'POST', body:fd });
+    if (!res.ok) { showMsg(`Upload failed: ${list[i].name}`,'error'); break; }
+  }
+  progressWrap.classList.add('hidden');
+  progressFill.style.width = '0%';
+  fetchFiles();
+}
+
+/* delete & download */
+async function deleteFile(publicId){
+  try {
+    const res = await fetch('/api/delete-file', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ public_id: publicId }) });
+    if (!res.ok) throw new Error();
+    fetchFiles();
+    showMsg('File deleted','success');
+  } catch (err) { console.error(err); showMsg('Delete failed','error'); }
+}
+
+async function forceDownload(url, filename){
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  } catch (err) { console.error(err); showMsg('Download failed','error'); }
+}
+
+/* =========================
+   Step 3: Storage summary logic (copied from index)
+   - formatSize and refresh function
+   - refresh on load and optionally every 60s
+   ========================= */
+function formatSize(bytes) {
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return gb.toFixed(2) + ' GB';
+  const mb = bytes / (1024 * 1024);
+  return mb.toFixed(2) + ' MB';
+}
+
+async function refreshStorageSummary() {
+  try {
+    const res = await fetch('/api/storage-summary');
+    if (!res.ok) throw new Error('Storage API failed');
+
+    const data = await res.json();
+
+    // guard when server returns zero/undefined
+    const totalBytes = Number(data.totalBytes || data.total_bytes || 0);
+    const limitBytes = Number(data.limitBytes || data.limit_bytes || data.limit || 0);
+
+    const percent = (limitBytes > 0) ? Math.min(100, Math.round(totalBytes / limitBytes * 100)) : 0;
+
+    document.getElementById('storageText').textContent =
+      `${formatSize(totalBytes)} / ${formatSize(limitBytes || 0)}`;
+
+    document.getElementById('storageFill').style.width = percent + '%';
+
+  } catch (err) {
+    console.error('Storage summary error', err);
+    if (document.getElementById('storageText')) document.getElementById('storageText').textContent = 'Error';
+    if (document.getElementById('storageFill')) document.getElementById('storageFill').style.width = '0%';
+  }
+}
+refreshStorageSummary();
+setInterval(refreshStorageSummary, 60000);
+
+/* =========================
+   Feature panel control (unchanged)
+========================= */
+let activeFeature = null;
+function closeFeaturePanel(){
+  featurePanel.classList.remove('active');
+  featurePanel.innerHTML = '';
+  featurePanel.setAttribute('aria-hidden','true');
+  document.documentElement.classList.remove('feature-open');
+  activeFeature = null;
+}
+function openFeaturePanel(name){
+  if (activeFeature === name){ closeFeaturePanel(); return; }
+  activeFeature = name;
+  document.documentElement.classList.add('feature-open');
+  featurePanel.classList.add('active');
+  featurePanel.setAttribute('aria-hidden','false');
+  featurePanel.innerHTML = '';
+  if (name === 'search') renderSearchFeature();
+  else if (name === 'merge') renderMergeFeature();
+  else if (name === 'delete') renderDeleteFeature();
+  else featurePanel.innerHTML = '<div class="text-sm text-slate-500">Feature not implemented</div>';
+}
+featureButtons.forEach(btn => btn.addEventListener('click', ()=> openFeaturePanel(btn.dataset.feature)));
+document.addEventListener('click', (e)=>{ if (e.target.closest('.nav-btn') || e.target.closest('#featurePanel')) return; if (featurePanel.classList.contains('active')) closeFeaturePanel(); });
+
+/* =========================
+   Token Search feature (unchanged logic)
+   see your existing backend endpoints
+========================= */
+function renderSearchFeature(){
+  featurePanel.innerHTML = `
+    <h3 class="text-lg font-semibold mb-3">Token Search</h3>
+    <div class="text-sm text-slate-500 mb-3">Search tokens by id or name. Select a token to view its files and copy individual files into this token.</div>
+    <input id="searchInput" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3" />
+    <div id="searchResults" class="space-y-2 mb-3"></div>
+    <div id="tokenFilesTitle" class="text-sm font-semibold mt-2 mb-2 hidden"></div>
+    <div id="tokenFiles" class="space-y-2"></div>
+  `;
+  lucide.createIcons();
+
+  const si = document.getElementById('searchInput');
+  const results = document.getElementById('searchResults');
+  const tokenFilesTitle = document.getElementById('tokenFilesTitle');
+  const tokenFiles = document.getElementById('tokenFiles');
+
+  const doSearch = debounce(async (q)=>{
+    tokenFilesTitle.classList.add('hidden');
+    tokenFiles.innerHTML = '';
+    if (!q){ results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
+    results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
+    try {
+      const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error('search failed');
+      const data = await res.json();
+      const hits = data.tokens || [];
+      if (!hits.length){ results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
+      results.innerHTML = '';
+      hits.forEach(t=>{
+        const row = document.createElement('div');
+        row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+        row.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
+                         <div class="flex gap-2">
+                           <button class="select-token text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-token="${t.id}">Select</button>
+                         </div>`;
+        results.appendChild(row);
+      });
+
+      results.querySelectorAll('.select-token').forEach(b=>{
+        b.addEventListener('click', async ()=>{
+          const tid = b.dataset.token;
+          tokenFilesTitle.classList.remove('hidden');
+          tokenFilesTitle.textContent = `Files in ${tid}`;
+          tokenFiles.innerHTML = '<div class="text-sm text-slate-500">Loading files...</div>';
+          try {
+            const r = await fetch(`/api/list-token-files?token=${encodeURIComponent(tid)}`);
+            if (!r.ok) throw new Error('list failed');
+            const d = await r.json();
+            const files = d.files || d.resources || [];
+            if (!files.length){ tokenFiles.innerHTML = '<div class="text-sm text-slate-500">No files found in that token</div>'; return; }
+            tokenFiles.innerHTML = '';
+            files.forEach(f=>{
+              const name = f.public_id.split('/').pop();
+              const size = (f.bytes / 1024 / 1024).toFixed(2);
+              const row = document.createElement('div');
+              row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+              row.innerHTML = `<div class="truncate text-sm">${name} <div class="text-xs text-slate-400">${size} MB</div></div>
+                               <div class="flex gap-2">
+                                 <button class="copy-file text-xs px-2 py-1 rounded bg-indigo-600 text-white" data-publicid="${f.public_id}" data-secureurl="${f.secure_url}" data-from="${tid}">Copy</button>
+                               </div>`;
+              tokenFiles.appendChild(row);
+            });
+
+            tokenFiles.querySelectorAll('.copy-file').forEach(cb => cb.onclick = async ()=>{
+              cb.disabled = true;
+              const fromToken = cb.dataset.from;
+              const publicId = cb.dataset.publicid;
+              const secureUrl = cb.dataset.secureurl;
+              try {
+                const res = await fetch('/api/copy-file', {
+                  method:'POST', headers:{ 'Content-Type':'application/json' },
+                  body: JSON.stringify({ fromToken, toToken: token, publicId, secureUrl })
+                });
+                if (!res.ok) throw new Error(await res.text());
+                showMsg('Copied file to current token','success');
+                fetchFiles(); // refresh current token files
+              } catch (err) {
+                console.error('copy failed', err);
+                showMsg('Copy failed','error');
+              } finally { cb.disabled = false; }
+            });
+
+          } catch (err) {
+            console.error(err);
+            tokenFiles.innerHTML = '<div class="text-sm text-red-500">Failed to load files</div>';
+          }
+        });
+      });
+
+    } catch (e) {
+      console.error(e);
+      results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
+    }
+  }, 420);
+
+  si.addEventListener('input', (ev)=> doSearch(ev.target.value.trim()));
+}
+
+/* =========================
+   Merge feature (unchanged)
+========================= */
+function renderMergeFeature(){
+  featurePanel.innerHTML = `
+    <h3 class="text-lg font-semibold mb-2">Merge tokens into <strong>${token}</strong></h3>
+    <div class="text-sm text-slate-500 mb-3">Search tokens here or use Token Search to select tokens to merge.</div>
+    <input id="mergeSearch" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3" />
+    <div id="mergeResults" class="space-y-2 mb-3"></div>
+    <div class="text-xs text-slate-500 mb-2">Selected sources</div>
+    <div id="mergeSelected" class="space-y-2 mb-3"><div class="text-sm text-slate-500">No sources selected</div></div>
+    <div class="mb-3">
+      <label class="text-xs text-slate-500">Type <strong>MERGE</strong> to enable</label>
+      <input id="mergeConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type MERGE" />
+    </div>
+    <div class="flex justify-end"><button id="doMergeBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Merge now</button></div>
+    <div id="mergeStatus" class="text-sm text-slate-500 mt-3"></div>
+  `;
+  lucide.createIcons();
+
+  const results = document.getElementById('mergeResults');
+  const selectedEl = document.getElementById('mergeSelected');
+  const searchInput = document.getElementById('mergeSearch');
+  const confirmInput = document.getElementById('mergeConfirm');
+  const doMergeBtn = document.getElementById('doMergeBtn');
+  const mergeStatus = document.getElementById('mergeStatus');
+
+  let selected = [];
+
+  async function doSearch(q){
+    if (!q){ results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
+    results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
+    try {
+      const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error('search failed');
+      const data = await res.json();
+      const hits = data.tokens || [];
+      if (!hits.length){ results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
+      results.innerHTML = '';
+      hits.forEach(t=>{
+        const r = document.createElement('div');
+        r.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+        r.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
+          <div class="flex gap-2"><button class="add-source text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-id="${t.id}">Add</button></div>`;
+        results.appendChild(r);
+      });
+      results.querySelectorAll('.add-source').forEach(b=> b.onclick = ()=>{
+        const id = b.dataset.id;
+        if (id === token) { showMsg('Cannot add current token','error'); return; }
+        if (selected.includes(id)) { showMsg('Already added','info'); return; }
+        selected.push(id); renderSelected();
+      });
+    } catch (e) {
+      console.error(e);
+      results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
+    }
+  }
+  const deb = debounce(doSearch, 350);
+  searchInput.addEventListener('input', (e)=> deb(e.target.value.trim()));
+
+  function renderSelected(){
+    selectedEl.innerHTML = '';
+    if (!selected.length) { selectedEl.innerHTML = '<div class="text-sm text-slate-500">No sources selected</div>'; return; }
+    selected.forEach(s=>{
+      const row = document.createElement('div');
+      row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+      row.innerHTML = `<div class="truncate text-sm">${s}</div><button class="remove-source text-xs px-2 py-1 rounded bg-red-100 text-red-700" data-id="${s}">Remove</button>`;
+      selectedEl.appendChild(row);
+      row.querySelector('.remove-source').onclick = ()=> { selected = selected.filter(x=> x !== s); renderSelected(); updateBtn(); };
+    });
+    updateBtn();
+  }
+
+  function updateBtn(){
+    if (confirmInput.value.trim() === 'MERGE' && selected.length>0) { doMergeBtn.disabled = false; doMergeBtn.classList.remove('opacity-60'); } else { doMergeBtn.disabled = true; doMergeBtn.classList.add('opacity-60'); }
+  }
+  confirmInput.addEventListener('input', updateBtn);
+
+  const tokenSelectedHandler = (ev) => {
+    const id = ev.detail?.id; if (!id) return;
+    if (id === token) { showMsg('Cannot add current token','error'); return; }
+    if (!selected.includes(id)) { selected.push(id); renderSelected(); }
+  };
+  window.addEventListener('qloud-token-selected', tokenSelectedHandler);
+
+  doMergeBtn.addEventListener('click', async ()=>{
+    if (!selected.length) return showMsg('Add at least one source','error');
+    if (confirmInput.value.trim() !== 'MERGE') return showMsg('Type MERGE to confirm','error');
+    mergeStatus.textContent = 'Merging...';
+    try {
+      const res = await fetch('/api/merge-tokens', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ dest: token, sources: selected }) });
+      if (!res.ok) throw new Error(await res.text());
+      mergeStatus.textContent = 'Merge successful';
+      showMsg('Merge successful','success');
+      selected = []; renderSelected(); confirmInput.value=''; updateBtn();
+      fetchFiles();
+    } catch (e) {
+      console.error(e);
+      mergeStatus.textContent = 'Merge failed';
+      showMsg('Merge failed','error');
+    }
+  });
+
+  const obs = new MutationObserver(()=> {
+    if (!featurePanel.classList.contains('active')) {
+      window.removeEventListener('qloud-token-selected', tokenSelectedHandler);
+      obs.disconnect();
+    }
+  });
+  obs.observe(featurePanel, { attributes:true, attributeFilter:['class'] });
+}
+
+/* =========================
+   Delete feature
+========================= */
+function renderDeleteFeature(){
+  featurePanel.innerHTML = `
+    <h3 class="text-lg font-semibold mb-2">Delete token</h3>
+    <div class="text-sm text-slate-500 mb-3">This will permanently delete token <strong>${token}</strong> and all files inside.</div>
+    <div class="mb-3">
+      <label class="text-xs text-slate-500">Type <strong>DELETE</strong> to enable</label>
+      <input id="deleteConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type DELETE" />
+    </div>
+    <div class="flex justify-end"><button id="doDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Delete token</button></div>
+    <div id="deleteStatus" class="text-sm text-slate-500 mt-3"></div>
+  `;
+  lucide.createIcons();
+
+  const input = document.getElementById('deleteConfirm');
+  const btn = document.getElementById('doDeleteBtn');
+  const status = document.getElementById('deleteStatus');
+
+  input.addEventListener('input', ()=> {
+    if (input.value.trim() === 'DELETE') { btn.disabled = false; btn.classList.remove('opacity-60'); }
+    else { btn.disabled = true; btn.classList.add('opacity-60'); }
+  });
+
+  btn.addEventListener('click', async ()=> {
+    if (!confirm('Delete this token and all its files? This is irreversible.')) return;
+    try {
+      const res = await fetch('/api/delete-token', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token }) });
+      if (!res.ok) throw new Error(await res.text());
+      showMsg('Token deleted','success');
+      location.href = 'index.html';
+    } catch (e) {
+      console.error(e);
+      status.textContent = 'Delete failed';
+      showMsg('Delete failed','error');
+    }
+  });
+}
+
+/* =========================
+   Profile name inline edit (Step 3b)
+========================= */
+(function setupProfileEdit(){
+  const nameEl = document.getElementById('profileName');
+  const btn = document.getElementById('editNameBtn');
+
+  btn.addEventListener('click', (ev)=>{
+    ev.stopPropagation();
+    const current = nameEl.textContent.trim();
+    const input = document.createElement('input');
+    input.type='text'; input.value = current; input.className = 'p-1 border rounded text-sm';
+    nameEl.replaceWith(input);
+    input.focus();
+    function done(save){
+      const final = input.value.trim() || current;
+      const span = document.createElement('div');
+      span.id='profileName'; span.className='profile-name'; span.textContent = final;
+      input.replaceWith(span);
+      if (save && final !== current) {
+        fetch('/api/save-profile', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token, name: final }) })
+          .then(r=> { if (r.ok) showMsg('Profile saved','success'); else showMsg('Save failed','error'); })
+          .catch(e=> { console.error(e); showMsg('Save failed','error'); });
+      }
+    }
+    input.addEventListener('blur', ()=> done(true));
+    input.addEventListener('keydown', (e)=> { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') done(false); });
+  });
+})();
 
 /* logout */
-logoutBtn.onclick=()=>location.href='index.html';
+logoutBtn.addEventListener('click', ()=> location.href='index.html');
+
+/* init */
+fetchFiles();
+lucide.createIcons();
+
 </script>
 </body>
 </html>
