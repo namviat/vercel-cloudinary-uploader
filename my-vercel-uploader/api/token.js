@@ -1,15 +1,7 @@
-// api/token.js
-import cloudinary from 'cloudinary';
+// /api/token.js
 
-cloudinary.v2.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+let TOKENS = {}; // in-memory (safe for now)
 
-/* =========================
-   Anime name generator
-========================= */
 const adjectives = [
   "Silent","Crimson","Azure","Shadow","Lunar","Obsidian",
   "Ivory","Golden","Phantom","Scarlet","Frozen","Storm",
@@ -18,79 +10,61 @@ const adjectives = [
 
 const nouns = [
   "Ronin","Samurai","Shinobi","Kitsune","Oni","Dragon",
-  "Lotus","Sakura","Vanguard","Slayer","Wanderer",
-  "Guardian","Fox","Raven","Blade","Spirit"
+  "Lotus","Sakura","Wanderer","Guardian","Fox","Raven","Spirit"
 ];
 
-const titles = [
-  "of Dawn","of Twilight","of the Void","of Ash",
-  "of Mist","of Ember","of Frost","of Night"
-];
-
-function generateAnimeName() {
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  return Math.random() > 0.5
-    ? `${adj} ${noun} ${titles[Math.floor(Math.random() * titles.length)]}`
-    : `${adj} ${noun}`;
+function generateAnimeName(existing) {
+  let name;
+  do {
+    const a = adjectives[Math.floor(Math.random()*adjectives.length)];
+    const n = nouns[Math.floor(Math.random()*nouns.length)];
+    name = `${a} ${n}`;
+  } while (existing.has(name));
+  return name;
 }
 
-/* =========================
-   API handler
-========================= */
-export default async function handler(req, res) {
-  try {
-    const token =
-      req.method === 'GET'
-        ? req.query.token
-        : req.body?.token;
+export default function handler(req, res) {
 
-    if (!token) {
-      return res.status(400).json({ error: 'Invalid token' });
+  /* ======================
+     GET → fetch or create
+  ====================== */
+  if (req.method === "GET") {
+    const token = req.query.token;
+    if (!token) return res.status(400).json({ error: "Token missing" });
+
+    if (!TOKENS[token]) {
+      const existing = new Set(Object.values(TOKENS).map(t => t.name));
+
+      TOKENS[token] = {
+        token,
+        name: generateAnimeName(existing),
+        avatar: {
+          style: "adventurer",
+          seed: token
+        },
+        createdAt: Date.now()
+      };
     }
 
-    const folder = `mycloud/${token}`;
-
-    // try to read folder resources
-    const resources = await cloudinary.v2.search
-      .expression(`folder:${folder}`)
-      .max_results(1)
-      .execute();
-
-    let profileName;
-    let avatarSeed = token;
-
-    if (resources.resources.length > 0) {
-      const ctx = resources.resources[0].context || {};
-      profileName = ctx.profile_name;
-    }
-
-    // FIRST TIME → create metadata
-    if (!profileName) {
-      profileName = generateAnimeName();
-
-      // attach metadata to folder by tagging first asset
-      if (resources.resources.length > 0) {
-        await cloudinary.v2.uploader.add_context(
-          {
-            profile_name: profileName,
-          },
-          resources.resources[0].public_id
-        );
-      }
-    }
-
-    return res.status(200).json({
-      token,
-      name: profileName,
-      avatar: {
-        style: 'adventurer',
-        seed: avatarSeed,
-      },
-    });
-
-  } catch (err) {
-    console.error('Token API error:', err);
-    return res.status(500).json({ error: 'Token API failed' });
+    return res.json(TOKENS[token]);
   }
+
+  /* ======================
+     POST → update profile
+  ====================== */
+  if (req.method === "POST") {
+    const { token, name } = req.body || {};
+    if (!token || !name) {
+      return res.status(400).json({ error: "Invalid data" });
+    }
+
+    if (!TOKENS[token]) {
+      return res.status(404).json({ error: "Token not found" });
+    }
+
+    TOKENS[token].name = name;
+    return res.json({ ok: true });
+  }
+
+  res.status(405).end();
 }
