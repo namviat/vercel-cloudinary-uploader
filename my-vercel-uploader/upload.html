@@ -11,120 +11,89 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
-  :root {
-    --sidebar-w: 270px;
-    --sidebar-collapsed-w: 88px;
-    --feature-w: 380px;
-    --app-gap: 32px;
-    --bg: #f5f7fb;
+  :root{
+    --sidebar-w:270px;
+    --sidebar-collapsed-w:88px;
+    --feature-w:380px;
+    --gap:32px;
+    --bg:#f5f7fb;
   }
 
-  body { margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:#0f172a; }
+  /* base */
+  html,body{height:100%;}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:#0f172a;-webkit-font-smoothing:antialiased;}
 
-  /* ---------- Sidebar (hover-expand) ---------- */
-  .sidebar {
-    position: fixed;
-    left: 16px;
-    top: 16px;
-    bottom: 16px;
-    width: var(--sidebar-w);
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 12px 30px rgba(2,6,23,0.06);
-    transition: width .45s cubic-bezier(.175,.885,.32,1.1);
-    overflow: hidden;
-    z-index: 60;
-    display:flex;
-    flex-direction:column;
+  /* SIDEBAR */
+  .sidebar{
+    position:fixed; left:16px; top:16px; bottom:16px;
+    width:var(--sidebar-w); background:#fff; border-radius:14px;
+    box-shadow:0 12px 36px rgba(2,6,23,0.06);
+    transition:width .45s cubic-bezier(.175,.885,.32,1.1), box-shadow .18s;
+    z-index:60; display:flex; flex-direction:column; overflow:hidden;
   }
-  .sidebar.collapsed { width: var(--sidebar-collapsed-w); }
+  .sidebar.collapsed{ width:var(--sidebar-collapsed-w); }
 
-  .sidebar-header { display:flex; align-items:center; gap:12px; padding:18px; }
-  .avatar { width:44px; height:44px; border-radius:10px; background:#eef2ff; display:flex; align-items:center; justify-content:center; font-weight:700; color:#374151; }
-  .profile-block { display:flex; flex-direction:column; gap:2px; }
-  .profile-name-row { display:flex; gap:8px; align-items:center; }
-  .profile-name { font-weight:600; }
-  .profile-token { font-size:12px; color:#64748b; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sidebar-header{ display:flex; gap:12px; align-items:center; padding:16px; }
+  .avatar{ width:44px; height:44px; border-radius:10px; background:#eef2ff; display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151; flex-shrink:0; }
+  .profile-block{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .profile-name-row{ display:flex; align-items:center; gap:8px; }
+  .profile-name{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
+  .profile-token{ font-size:12px; color:#64748b; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   /* hide labels when collapsed */
-  .sidebar.collapsed .label { opacity:0; transform:translateX(-8px); pointer-events:none; }
-  .label { transition:all .18s ease; }
+  .sidebar.collapsed .label{ opacity:0; transform:translateX(-8px); pointer-events:none; }
+  .label{ transition:opacity .18s, transform .18s; }
 
-  /* nav */
-  .nav { padding:10px 12px; flex:1; overflow:auto; }
-  .nav-item { position:relative; margin-bottom:8px; }
-  .nav-btn {
-    display:flex; align-items:center; gap:12px;
-    padding:12px; border-radius:10px; cursor:pointer; color:#475569;
-    transition: all .18s;
-  }
-  .nav-btn:hover { background:#f1f5f9; color:#0f172a; transform:translateX(6px); }
-  .nav-icon { width:20px; height:20px; flex:0 0 20px; color:inherit; }
+  /* NAV */
+  .nav{ padding:8px 12px; flex:1; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .nav-item{ position:relative; margin-bottom:8px; }
+  .nav-btn{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; color:#475569; cursor:pointer; transition:background .18s, color .18s; }
+  .nav-btn:hover{ background:#f8fafc; color:#0f172a; }
+  .nav-icon{ width:20px; height:20px; flex:0 0 20px; color:inherit; }
 
-  /* tooltip for collapsed */
-  .tooltip {
-    position:absolute; left:100%; top:50%;
-    transform:translate(8px,-50%); background:#0f172a; color:#fff;
-    padding:6px 10px; border-radius:8px; font-size:12px; opacity:0; pointer-events:none; transition:.18s;
-  }
-  .sidebar.collapsed .nav-item:hover .tooltip { opacity:1; transform:translate(14px,-50%); }
+  /* tooltip when collapsed */
+  .tooltip{ position:absolute; left:100%; top:50%; transform:translate(8px,-50%); background:#0f172a; color:#fff; padding:6px 10px; border-radius:8px; font-size:12px; opacity:0; pointer-events:none; transition:.18s; }
+  .sidebar.collapsed .nav-item:hover .tooltip{ opacity:1; transform:translate(14px,-50%); }
 
   /* storage footer */
-  .sidebar-footer { padding:12px; border-top:1px solid rgba(2,6,23,0.03); display:flex; flex-direction:column; gap:8px; }
-  .storage-bar { height:8px; background:#eef2ff; border-radius:999px; overflow:hidden; }
-  .storage-fill { height:100%; background:linear-gradient(90deg,#6366f1,#06b6d4); width:0%; transition:width .5s ease; }
-  .storage-text { font-size:12px; color:#64748b; }
-  .storage-icon { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; color:#475569; }
+  .sidebar-footer{ padding:12px; border-top:1px solid rgba(2,6,23,0.03); display:flex; flex-direction:column; gap:8px; }
+  .storage-top{ display:flex; align-items:center; gap:8px; justify-content:space-between; }
+  .storage-icon{ width:20px; height:20px; color:#475569; display:inline-flex; align-items:center; justify-content:center; }
+  .storage-text{ font-size:12px; color:#64748b; }
+  .storage-bar{ height:8px; background:#eef2ff; border-radius:999px; overflow:hidden; pointer-events:none; } /* pointer-events none prevents dragging */
+  .storage-fill{ height:100%; width:0%; background:linear-gradient(90deg,#6366f1,#06b6d4); transition:width .6s cubic-bezier(.2,.9,.2,1); }
 
-  /* hide storage text when collapsed (keep icon visible) */
-  .sidebar.collapsed .storage-text { display:none; }
-  .sidebar.collapsed .storage-bar { display:none; }
+  /* logout */
+  .logout-row{ padding:10px 12px; }
 
-  /* logout button */
-  .logout-row { padding:10px 12px; }
+  /* APP layout */
+  .app{ margin-left:calc(var(--sidebar-w) + var(--gap)); padding:28px 32px; transition:margin .25s ease; }
+  .sidebar.collapsed ~ .app{ margin-left:calc(var(--sidebar-collapsed-w) + var(--gap)); }
 
-  /* ---------- Layout ---------- */
-  .app {
-    margin-left: calc(var(--sidebar-w) + var(--app-gap));
-    padding:28px 32px;
-    transition: margin-right .18s ease, margin-left .18s ease;
-  }
-  /* when collapsed reduce left offset */
-  .sidebar.collapsed ~ .app { margin-left: calc(var(--sidebar-collapsed-w) + var(--app-gap)); }
+  /* when feature open, add right margin to app to avoid overlap */
+  .feature-open .app{ margin-right:calc(var(--feature-w) + var(--gap)); transition:margin .25s ease; }
 
-  /* when feature panel active add right margin so main doesn't overlap / gets shorter */
-  .feature-open { margin-right: calc(var(--feature-w) + var(--app-gap)); }
+  /* MAIN */
+  .upload-box{ border:2px dashed #c7d2fe; background:#fff; border-radius:12px; padding:44px; text-align:center; cursor:pointer; transition:box-shadow .18s, transform .18s, background .18s; }
+  .upload-box:hover{ background:#fbfdff; box-shadow:0 10px 30px rgba(2,6,23,0.05); }
+  .file-card{ background:#fff; border-radius:10px; padding:12px; box-shadow:0 6px 18px rgba(2,6,23,0.04); position:relative; border:1px solid rgba(2,6,23,0.03); transition:transform .12s ease; }
+  .file-card:hover{ transform:translateY(-4px); }
+  .file-actions{ position:absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:opacity .12s; }
+  .file-card:hover .file-actions{ opacity:1; }
+  .file-action-btn{ width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.04); cursor:pointer; }
 
-  /* ---------- Main UI ---------- */
-  .upload-box { border:2px dashed #c7d2fe; background:#fff; border-radius:12px; padding:44px; text-align:center; cursor:pointer; transition:.18s; }
-  .upload-box:hover { background:#fbfdff; box-shadow:0 8px 30px rgba(2,6,23,0.04); }
-  .file-card { background:#fff; border-radius:10px; padding:12px; box-shadow:0 4px 12px rgba(2,6,23,0.03); position:relative; border:1px solid rgba(2,6,23,0.03); }
-  .file-actions { position:absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:.15s; }
-  .file-card:hover .file-actions { opacity:1; }
-  .file-action-btn { width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.04); cursor:pointer; }
+  /* feature panel */
+  .feature-panel{ position:fixed; right:20px; top:16px; bottom:16px; width:var(--feature-w); padding:16px; background:#fff; border-radius:12px; box-shadow:0 14px 40px rgba(2,6,23,0.06); display:none; overflow:auto; z-index:55; transition:transform .25s cubic-bezier(.2,.9,.2,1); }
+  .feature-panel.active{ display:block; }
 
-  /* ---------- Feature Panel ---------- */
-  .feature-panel {
-    position: fixed;
-    right: 20px;
-    top: 16px;
-    bottom: 16px;
-    width: var(--feature-w);
-    padding:16px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 14px 40px rgba(2,6,23,0.06);
-    display:none;
-    z-index:55;
-    overflow:auto;
-  }
-  .feature-panel.active { display:block; }
+  /* remove transforms on nav hover to stop labels moving (user complained) */
+  .nav-btn:hover{ transform:none; }
 
-  /* responsive tweaks */
-  @media (max-width: 1024px) {
-    .sidebar { left:10px; top:10px; bottom:10px; width: var(--sidebar-collapsed-w); }
-    .app { margin-left: calc(var(--sidebar-collapsed-w) + var(--app-gap)); padding:16px; }
-    .feature-panel { display:none !important; }
+  /* small screens */
+  @media (max-width:1024px){
+    .sidebar{ left:10px; top:10px; bottom:10px; width:var(--sidebar-collapsed-w); }
+    .app{ margin-left:calc(var(--sidebar-collapsed-w) + var(--gap)); padding:16px; }
+    .feature-panel{ display:none !important; }
   }
 </style>
 </head>
@@ -132,24 +101,17 @@
 
 <!-- SIDEBAR -->
 <aside id="sidebar" class="sidebar collapsed" aria-label="Qloud sidebar">
-
-  <!-- header -->
   <div class="sidebar-header">
     <div class="avatar" id="avatarPreview">U</div>
-
-    <div class="profile-block label">
+    <div class="profile-block label" style="min-width:0;">
       <div class="profile-name-row">
         <div id="profileName" class="profile-name" title="Click pencil to edit">Profile</div>
-        <!-- pencil icon: visible when sidebar expanded (label visible) -->
-        <button id="editNameBtn" title="Edit name" class="ml-1 text-slate-400 hidden" aria-label="Edit name">
-          <i data-lucide="edit-2" class="w-4 h-4"></i>
-        </button>
+        <button id="editNameBtn" class="text-slate-400 hidden" title="Edit name"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
       </div>
       <div id="profileToken" class="profile-token">token: ...</div>
     </div>
   </div>
 
-  <!-- nav features -->
   <nav class="nav" role="navigation" aria-label="Features">
     <div class="nav-item">
       <div class="nav-btn feature-btn" data-feature="search" role="button" tabindex="0">
@@ -174,23 +136,21 @@
       </div>
       <div class="tooltip">Delete Token</div>
     </div>
-
   </nav>
 
-  <!-- footer: storage indicator (always visible, text hidden when collapsed) -->
   <div class="sidebar-footer">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
+    <div class="storage-top">
+      <div style="display:flex; gap:8px; align-items:center;">
         <div class="storage-icon"><i data-lucide="cloud" class="w-4 h-4"></i></div>
-        <div id="storageText" class="storage-text">0.00 GB used</div> <!-- token count removed -->
+        <div id="storageText" class="storage-text">0.00 GB used</div>
       </div>
+      <!-- intentionally empty right side; no token count displayed -->
     </div>
-    <div class="storage-bar">
+    <div class="storage-bar" aria-hidden="true">
       <div id="storageFill" class="storage-fill" style="width:0%"></div>
     </div>
   </div>
 
-  <!-- logout -->
   <div class="logout-row">
     <div id="logoutBtn" class="nav-btn" role="button" tabindex="0">
       <i data-lucide="log-out" class="nav-icon"></i>
@@ -199,13 +159,11 @@
   </div>
 </aside>
 
-<!-- APP -->
+<!-- APP (main) -->
 <main class="app" id="app">
   <div class="max-w-5xl mx-auto">
-
     <div id="msg" class="hidden mb-4"></div>
 
-    <!-- UPLOAD BOX (functional code preserved) -->
     <div id="uploadBox" class="upload-box card">
       <input id="fileInput" type="file" multiple hidden />
       <div class="text-4xl mb-2">☁️</div>
@@ -220,18 +178,16 @@
       <div id="statusText" class="text-xs text-slate-500 mt-1"></div>
     </div>
 
-    <!-- Files grid -->
     <section class="mt-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-semibold">Files <span id="count" class="text-sm text-slate-500"></span></h2>
       </div>
       <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
     </section>
-
   </div>
 </main>
 
-<!-- Feature panel (right). Hidden until user clicks a feature. -->
+<!-- RIGHT FEATURE PANEL -->
 <aside id="featurePanel" class="feature-panel" aria-hidden="true"></aside>
 
 <script>lucide.createIcons()</script>
@@ -239,7 +195,6 @@
 <script>
 /* =========================
    CONFIG (unchanged)
-   Keep all endpoints and their behavior intact.
 ========================= */
 const CLOUD_NAME = 'dzvz7kzin';
 const UPLOAD_PRESET = 'mycloud_unsigned';
@@ -268,46 +223,36 @@ const storageText = document.getElementById('storageText');
 
 const featureButtons = document.querySelectorAll('.feature-btn');
 const logoutBtn = document.getElementById('logoutBtn');
-
+const editNameBtn = document.getElementById('editNameBtn');
 let files = [];
 
-/* ---------------- Sidebar hover behavior (from your example) ---------------- */
-function applySidebarHoverBehavior() {
+/* ---------------- Sidebar hover behavior ---------------- */
+function applySidebarHoverBehavior(){
   if (window.innerWidth >= 1024) sidebar.classList.add('collapsed'); else sidebar.classList.remove('collapsed');
 
-  sidebar.addEventListener('mouseenter', () => { if (window.innerWidth >= 1024) {
-    sidebar.classList.remove('collapsed');
-    // show edit pencil when expanded
-    showEditPencil(true);
-  }});
-  sidebar.addEventListener('mouseleave', () => { if (window.innerWidth >= 1024) {
-    sidebar.classList.add('collapsed');
-    showEditPencil(false);
-  }});
+  sidebar.addEventListener('mouseenter', ()=> {
+    if (window.innerWidth >= 1024) { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); }
+  });
+  sidebar.addEventListener('mouseleave', ()=> {
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); }
+  });
   window.addEventListener('resize', ()=> {
-    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); showEditPencil(false); }
-    else { sidebar.classList.remove('collapsed'); showEditPencil(true); } // mobile: labels visible
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); }
+    else { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); }
   });
 }
 applySidebarHoverBehavior();
 
-/* Show/hide pencil edit icon for profile name */
-function showEditPencil(show) {
-  const btn = document.getElementById('editNameBtn');
-  if (!btn) return;
-  if (show) btn.classList.remove('hidden'); else btn.classList.add('hidden');
-}
-
-/* -------------- messages -------------- */
+/* messages */
 function showMsg(text, type='info'){
   msgEl.textContent = text;
   msgEl.className = 'p-3 rounded mb-4 text-sm ' + (type==='success' ? 'bg-emerald-50 text-emerald-700' : type==='error' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700');
   msgEl.classList.remove('hidden');
-  setTimeout(()=> msgEl.classList.add('hidden'), 3000);
+  setTimeout(()=> msgEl.classList.add('hidden'), 2600);
 }
 
-/* -------------- file icon helper -------------- */
-function getFileIcon(publicId) {
+/* file icon helper */
+function getFileIcon(publicId){
   const ext = (publicId.split('.').pop() || '').toLowerCase();
   if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
   if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
@@ -318,9 +263,10 @@ function getFileIcon(publicId) {
   return 'file';
 }
 
-/* ========== FILES: fetch/render/upload/delete/download ========== */
-/* Fetch files (unchanged) */
-async function fetchFiles() {
+/* =========================
+   FILES: fetch / render / upload / delete / download
+========================= */
+async function fetchFiles(){
   try {
     const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
     const data = await res.json();
@@ -332,14 +278,10 @@ async function fetchFiles() {
   }
 }
 
-/* Render */
-function renderFiles() {
+function renderFiles(){
   countEl.textContent = `(${files.length})`;
   fileGrid.innerHTML = '';
-  if (!files.length) {
-    fileGrid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-8">No files uploaded yet</div>';
-    return;
-  }
+  if (!files.length) { fileGrid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-8">No files uploaded yet</div>'; return; }
   files.forEach(f=>{
     const name = f.public_id.split('/').pop();
     const size = (f.bytes / 1024 / 1024).toFixed(2);
@@ -362,14 +304,15 @@ function renderFiles() {
   lucide.createIcons();
 }
 
-/* Upload */
+/* upload */
 uploadBox.addEventListener('click', ()=> fileInput.click());
 uploadBox.addEventListener('dragover', e=> { e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
 uploadBox.addEventListener('dragleave', ()=> uploadBox.classList.remove('ring-2','ring-indigo-200'));
 uploadBox.addEventListener('drop', e=> { e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
-fileInput.onchange = e=> uploadFiles([...e.target.files]);
 
-async function uploadFiles(list) {
+fileInput.onchange = e => uploadFiles([...e.target.files]);
+
+async function uploadFiles(list){
   if (!list.length) return;
   progressWrap.classList.remove('hidden');
   for (let i=0;i<list.length;i++){
@@ -387,8 +330,8 @@ async function uploadFiles(list) {
   fetchFiles();
 }
 
-/* Delete and download (unchanged) */
-async function deleteFile(publicId) {
+/* delete & download */
+async function deleteFile(publicId){
   try {
     const res = await fetch('/api/delete-file', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ public_id: publicId }) });
     if (!res.ok) throw new Error();
@@ -397,7 +340,7 @@ async function deleteFile(publicId) {
   } catch (err) { console.error(err); showMsg('Delete failed','error'); }
 }
 
-async function forceDownload(url, filename) {
+async function forceDownload(url, filename){
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error();
@@ -412,11 +355,12 @@ async function forceDownload(url, filename) {
   } catch (err) { console.error(err); showMsg('Download failed','error'); }
 }
 
-/* ========== Storage summary (always visible) ==========
-   Uses your API /api/storage-summary (server code you provided). :contentReference[oaicite:1]{index=1}
-   We DO NOT show token count here (removed as requested).
-======================================================== */
-async function refreshStorageSummary() {
+/* =========================
+   STORAGE SUMMARY (always visible)
+   Uses /api/storage-summary (server file present). :contentReference[oaicite:3]{index=3}
+   Refreshes on load and every 60s.
+========================= */
+async function refreshStorageSummary(){
   try {
     const res = await fetch('/api/storage-summary');
     if (!res.ok) throw new Error('storage fetch failed');
@@ -425,122 +369,167 @@ async function refreshStorageSummary() {
     storageFill.style.width = percent + '%';
     storageText.textContent = `${(data.totalBytes / (1024*1024*1024)).toFixed(2)} GB used`;
   } catch (e) {
-    console.error(e);
+    console.error('storage summary error', e);
     storageFill.style.width = '0%';
     storageText.textContent = 'Storage info unavailable';
   }
 }
+refreshStorageSummary();
+setInterval(refreshStorageSummary, 60000); // every 60s
 
-/* ========== Feature panel control (no logic changes) ==========
-   Clicking a feature loads the corresponding UI into the right panel.
-   Clicking again closes it. Opening sets .feature-open on app to prevent overlap.
-================================================================= */
+/* =========================
+   FEATURE PANEL CONTROL (no backend changes)
+   - Clicking a feature loads its UI into the right panel
+   - Opening adds feature-open class on <html> so main shrinks and doesn't overlap
+========================= */
 let activeFeature = null;
-function closeFeaturePanel() {
+function closeFeaturePanel(){
   featurePanel.classList.remove('active');
   featurePanel.innerHTML = '';
   featurePanel.setAttribute('aria-hidden','true');
-  document.documentElement.classList.remove('feature-open'); // remove global class (adjust margins)
+  document.documentElement.classList.remove('feature-open');
   activeFeature = null;
 }
-function openFeaturePanel(name) {
-  if (activeFeature === name) { closeFeaturePanel(); return; }
+function openFeaturePanel(name){
+  if (activeFeature === name){ closeFeaturePanel(); return; }
   activeFeature = name;
+  document.documentElement.classList.add('feature-open');
   featurePanel.classList.add('active');
   featurePanel.setAttribute('aria-hidden','false');
-  document.documentElement.classList.add('feature-open'); // body/html will have .feature-open in CSS to shift main
-  featurePanel.innerHTML = ''; // clear
+  featurePanel.innerHTML = '';
   if (name === 'search') renderSearchFeature();
   else if (name === 'merge') renderMergeFeature();
   else if (name === 'delete') renderDeleteFeature();
   else featurePanel.innerHTML = '<div class="text-sm text-slate-500">Feature not implemented</div>';
 }
 featureButtons.forEach(btn => btn.addEventListener('click', ()=> openFeaturePanel(btn.dataset.feature)));
+document.addEventListener('click', (e)=>{ if (e.target.closest('.nav-btn') || e.target.closest('#featurePanel')) return; if (featurePanel.classList.contains('active')) closeFeaturePanel(); });
 
-/* Close when clicking outside (except sidebar & featurePanel) */
-document.addEventListener('click', (e)=> {
-  if (e.target.closest('.nav-btn') || e.target.closest('#featurePanel')) return;
-  if (featurePanel.classList.contains('active')) closeFeaturePanel();
-});
+/* =========================
+   Token Search feature
+   - searches tokens via /api/search-tokens (server file present). :contentReference[oaicite:4]{index=4}
+   - when user clicks "Select" it lists files for that token (via /api/list-token-files)
+   - user can click "Copy" on individual files to copy them into current token using /api/copy-file (server file present). :contentReference[oaicite:5]{index=5}
+========================= */
+function debounce(fn, wait=350){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this,args), wait); }; }
 
-/* ========== Token Search feature ==========
-   Debounced typing, uses /api/search-tokens
-   DOES NOT navigate automatically. Selecting a token dispatches event 'qloud-token-selected'
-   so Merge panel can pick it (as before).
-================================================ */
-function debounce(fn, wait=350){ let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), wait); }; }
-
-function renderSearchFeature() {
+function renderSearchFeature(){
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-3">Token Search</h3>
-    <div class="text-sm text-slate-500 mb-3">Search tokens by id or name. Use Select to make a token available for Merge (no navigation).</div>
+    <div class="text-sm text-slate-500 mb-3">Search tokens by id or name. Select a token to view its files and copy individual files into this token.</div>
     <input id="searchInput" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3" />
-    <div id="searchResults" class="space-y-2"></div>
+    <div id="searchResults" class="space-y-2 mb-3"></div>
+    <div id="tokenFilesTitle" class="text-sm font-semibold mt-2 mb-2 hidden"></div>
+    <div id="tokenFiles" class="space-y-2"></div>
   `;
   lucide.createIcons();
 
   const si = document.getElementById('searchInput');
   const results = document.getElementById('searchResults');
+  const tokenFilesTitle = document.getElementById('tokenFilesTitle');
+  const tokenFiles = document.getElementById('tokenFiles');
 
   const doSearch = debounce(async (q)=>{
-    if (!q) { results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
+    tokenFilesTitle.classList.add('hidden');
+    tokenFiles.innerHTML = '';
+    if (!q){ results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
     results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
     try {
       const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('search failed');
       const data = await res.json();
       const hits = data.tokens || [];
-      if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
+      if (!hits.length){ results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
       results.innerHTML = '';
-      hits.forEach(t => {
+      hits.forEach(t=>{
         const row = document.createElement('div');
         row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
         row.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
-          <div class="flex gap-2">
-            <button class="select-token text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-token="${t.id}">Select</button>
-          </div>`;
+                         <div class="flex gap-2">
+                           <button class="select-token text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-token="${t.id}">Select</button>
+                         </div>`;
         results.appendChild(row);
       });
-      // attach handlers: dispatch event 'qloud-token-selected' (merge listens for it)
+
+      // attach handlers
       results.querySelectorAll('.select-token').forEach(b=>{
-        b.addEventListener('click', ()=> {
-          const id = b.dataset.token;
-          window.dispatchEvent(new CustomEvent('qloud-token-selected', { detail:{ id } }));
-          showMsg('Token selected for merge', 'success');
+        b.addEventListener('click', async ()=>{
+          const tid = b.dataset.token;
+          // list files for the clicked token
+          tokenFilesTitle.classList.remove('hidden');
+          tokenFilesTitle.textContent = `Files in ${tid}`;
+          tokenFiles.innerHTML = '<div class="text-sm text-slate-500">Loading files...</div>';
+          try {
+            const r = await fetch(`/api/list-token-files?token=${encodeURIComponent(tid)}`);
+            if (!r.ok) throw new Error('list failed');
+            const d = await r.json();
+            const files = d.files || d.resources || [];
+            if (!files.length){ tokenFiles.innerHTML = '<div class="text-sm text-slate-500">No files found in that token</div>'; return; }
+            tokenFiles.innerHTML = '';
+            files.forEach(f=>{
+              const name = f.public_id.split('/').pop();
+              const size = (f.bytes / 1024 / 1024).toFixed(2);
+              const row = document.createElement('div');
+              row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+              row.innerHTML = `<div class="truncate text-sm">${name} <div class="text-xs text-slate-400">${size} MB</div></div>
+                               <div class="flex gap-2">
+                                 <button class="copy-file text-xs px-2 py-1 rounded bg-indigo-600 text-white" data-publicid="${f.public_id}" data-secureurl="${f.secure_url}" data-from="${tid}">Copy</button>
+                               </div>`;
+              tokenFiles.appendChild(row);
+            });
+
+            // attach copy handlers (copy per-file into CURRENT token)
+            tokenFiles.querySelectorAll('.copy-file').forEach(cb => cb.onclick = async ()=>{
+              cb.disabled = true;
+              const fromToken = cb.dataset.from;
+              const publicId = cb.dataset.publicid;
+              const secureUrl = cb.dataset.secureurl;
+              try {
+                const res = await fetch('/api/copy-file', {
+                  method:'POST', headers:{ 'Content-Type':'application/json' },
+                  body: JSON.stringify({ fromToken, toToken: token, publicId, secureUrl })
+                });
+                if (!res.ok) throw new Error(await res.text());
+                showMsg('Copied file to current token','success');
+                fetchFiles(); // refresh current token files
+              } catch (err) {
+                console.error('copy failed', err);
+                showMsg('Copy failed','error');
+              } finally { cb.disabled = false; }
+            });
+
+          } catch (err) {
+            console.error(err);
+            tokenFiles.innerHTML = '<div class="text-sm text-red-500">Failed to load files</div>';
+          }
         });
       });
+
     } catch (e) {
       console.error(e);
       results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
     }
-  }, 400);
+  }, 420);
 
   si.addEventListener('input', (ev)=> doSearch(ev.target.value.trim()));
 }
 
-/* ========== Merge feature ==========
-   Renders UI and calls existing /api/merge-tokens when user clicks Merge.
-   Listens to global 'qloud-token-selected' to add sources selected via Search.
-==================================================================== */
-function renderMergeFeature() {
+/* =========================
+   Merge feature (unchanged endpoints)
+========================= */
+function renderMergeFeature(){
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-2">Merge tokens into <strong>${token}</strong></h3>
-    <div class="text-sm text-slate-500 mb-3">Search tokens here or use the Search feature to pick tokens.</div>
+    <div class="text-sm text-slate-500 mb-3">Search tokens here or use Token Search to select tokens to merge.</div>
     <input id="mergeSearch" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3" />
     <div id="mergeResults" class="space-y-2 mb-3"></div>
-
     <div class="text-xs text-slate-500 mb-2">Selected sources</div>
     <div id="mergeSelected" class="space-y-2 mb-3"><div class="text-sm text-slate-500">No sources selected</div></div>
-
     <div class="mb-3">
       <label class="text-xs text-slate-500">Type <strong>MERGE</strong> to enable</label>
       <input id="mergeConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type MERGE" />
     </div>
-
-    <div class="flex justify-end">
-      <button id="doMergeBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Merge now</button>
-    </div>
-
+    <div class="flex justify-end"><button id="doMergeBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Merge now</button></div>
     <div id="mergeStatus" class="text-sm text-slate-500 mt-3"></div>
   `;
   lucide.createIcons();
@@ -554,44 +543,38 @@ function renderMergeFeature() {
 
   let selected = [];
 
-  async function search(q) {
-    if (!q) { results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
+  async function doSearch(q){
+    if (!q){ results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
     results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
     try {
       const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('search failed');
       const data = await res.json();
       const hits = data.tokens || [];
-      if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
+      if (!hits.length){ results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
       results.innerHTML = '';
       hits.forEach(t=>{
         const r = document.createElement('div');
         r.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
         r.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
-          <div class="flex gap-2">
-            <button class="add-source text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-id="${t.id}">Add</button>
-          </div>`;
+          <div class="flex gap-2"><button class="add-source text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-id="${t.id}">Add</button></div>`;
         results.appendChild(r);
       });
-      // hook add
-      results.querySelectorAll('.add-source').forEach(b=>{
-        b.onclick = ()=> {
-          const id = b.dataset.id;
-          if (id === token) { showMsg('Cannot add current token','error'); return; }
-          if (selected.includes(id)) { showMsg('Already added','info'); return; }
-          selected.push(id);
-          renderSelected();
-        };
+      results.querySelectorAll('.add-source').forEach(b=> b.onclick = ()=>{
+        const id = b.dataset.id;
+        if (id === token) { showMsg('Cannot add current token','error'); return; }
+        if (selected.includes(id)) { showMsg('Already added','info'); return; }
+        selected.push(id); renderSelected();
       });
     } catch (e) {
       console.error(e);
       results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
     }
   }
-  const debouncedSearch = debounce(search, 350);
-  searchInput.addEventListener('input', (e)=> debouncedSearch(e.target.value.trim()));
+  const deb = debounce(doSearch, 350);
+  searchInput.addEventListener('input', (e)=> deb(e.target.value.trim()));
 
-  function renderSelected() {
+  function renderSelected(){
     selectedEl.innerHTML = '';
     if (!selected.length) { selectedEl.innerHTML = '<div class="text-sm text-slate-500">No sources selected</div>'; return; }
     selected.forEach(s=>{
@@ -599,29 +582,22 @@ function renderMergeFeature() {
       row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
       row.innerHTML = `<div class="truncate text-sm">${s}</div><button class="remove-source text-xs px-2 py-1 rounded bg-red-100 text-red-700" data-id="${s}">Remove</button>`;
       selectedEl.appendChild(row);
-      row.querySelector('.remove-source').onclick = ()=> {
-        selected = selected.filter(x=> x !== s);
-        renderSelected();
-        updateButton();
-      };
+      row.querySelector('.remove-source').onclick = ()=> { selected = selected.filter(x=> x !== s); renderSelected(); updateBtn(); };
     });
-    updateButton();
+    updateBtn();
   }
 
-  function updateButton(){
-    if (confirmInput.value.trim() === 'MERGE' && selected.length > 0) { doMergeBtn.disabled = false; doMergeBtn.classList.remove('opacity-60'); }
-    else { doMergeBtn.disabled = true; doMergeBtn.classList.add('opacity-60'); }
+  function updateBtn(){
+    if (confirmInput.value.trim() === 'MERGE' && selected.length>0) { doMergeBtn.disabled = false; doMergeBtn.classList.remove('opacity-60'); } else { doMergeBtn.disabled = true; doMergeBtn.classList.add('opacity-60'); }
   }
-  confirmInput.addEventListener('input', updateButton);
+  confirmInput.addEventListener('input', updateBtn);
 
-  // listen for 'qloud-token-selected' from the Search feature
-  const tokenSelectHandler = (ev) => {
-    const id = ev.detail?.id;
-    if (!id) return;
+  const tokenSelectedHandler = (ev) => {
+    const id = ev.detail?.id; if (!id) return;
     if (id === token) { showMsg('Cannot add current token','error'); return; }
     if (!selected.includes(id)) { selected.push(id); renderSelected(); }
   };
-  window.addEventListener('qloud-token-selected', tokenSelectHandler);
+  window.addEventListener('qloud-token-selected', tokenSelectedHandler);
 
   doMergeBtn.addEventListener('click', async ()=>{
     if (!selected.length) return showMsg('Add at least one source','error');
@@ -632,7 +608,7 @@ function renderMergeFeature() {
       if (!res.ok) throw new Error(await res.text());
       mergeStatus.textContent = 'Merge successful';
       showMsg('Merge successful','success');
-      selected = []; renderSelected(); confirmInput.value = ''; updateButton();
+      selected = []; renderSelected(); confirmInput.value=''; updateBtn();
       fetchFiles();
     } catch (e) {
       console.error(e);
@@ -641,24 +617,25 @@ function renderMergeFeature() {
     }
   });
 
-  // cleanup on panel close via MutationObserver
   const obs = new MutationObserver(()=> {
     if (!featurePanel.classList.contains('active')) {
-      window.removeEventListener('qloud-token-selected', tokenSelectHandler);
+      window.removeEventListener('qloud-token-selected', tokenSelectedHandler);
       obs.disconnect();
     }
   });
   obs.observe(featurePanel, { attributes:true, attributeFilter:['class'] });
 }
 
-/* ========== Delete token UI ========== */
-function renderDeleteFeature() {
+/* =========================
+   Delete feature UI (unchanged endpoints)
+========================= */
+function renderDeleteFeature(){
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-2">Delete token</h3>
     <div class="text-sm text-slate-500 mb-3">This will permanently delete token <strong>${token}</strong> and all files inside.</div>
     <div class="mb-3">
       <label class="text-xs text-slate-500">Type <strong>DELETE</strong> to enable</label>
-      <input id="deleteConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type DELETE"/>
+      <input id="deleteConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type DELETE" />
     </div>
     <div class="flex justify-end"><button id="doDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Delete token</button></div>
     <div id="deleteStatus" class="text-sm text-slate-500 mt-3"></div>
@@ -670,10 +647,11 @@ function renderDeleteFeature() {
   const status = document.getElementById('deleteStatus');
 
   input.addEventListener('input', ()=> {
-    if (input.value.trim() === 'DELETE') { btn.disabled = false; btn.classList.remove('opacity-60'); } else { btn.disabled = true; btn.classList.add('opacity-60'); }
+    if (input.value.trim() === 'DELETE') { btn.disabled = false; btn.classList.remove('opacity-60'); }
+    else { btn.disabled = true; btn.classList.add('opacity-60'); }
   });
 
-  btn.addEventListener('click', async ()=>{
+  btn.addEventListener('click', async ()=> {
     if (!confirm('Delete this token and all its files? This is irreversible.')) return;
     try {
       const res = await fetch('/api/delete-token', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token }) });
@@ -688,68 +666,43 @@ function renderDeleteFeature() {
   });
 }
 
-/* ========== Profile name editing (UI only + save via /api/save-profile if present) ========== */
+/* =========================
+   Profile name inline edit (saves via /api/save-profile if exists)
+========================= */
 (function setupProfileEdit(){
   const nameEl = document.getElementById('profileName');
-  const editBtn = document.getElementById('editNameBtn');
+  const btn = document.getElementById('editNameBtn');
 
-  // create inline input when edit clicked
-  editBtn.addEventListener('click', async (ev)=> {
+  btn.addEventListener('click', (ev)=>{
     ev.stopPropagation();
     const current = nameEl.textContent.trim();
     const input = document.createElement('input');
-    input.type = 'text';
-    input.value = current;
-    input.className = 'p-1 border rounded text-sm';
+    input.type='text'; input.value = current; input.className = 'p-1 border rounded text-sm';
     nameEl.replaceWith(input);
     input.focus();
-    // handle save on blur or Enter
-    function finish(save) {
+    function done(save){
       const final = input.value.trim() || current;
       const span = document.createElement('div');
-      span.id = 'profileName';
-      span.className = 'profile-name';
-      span.textContent = final;
+      span.id='profileName'; span.className='profile-name'; span.textContent = final;
       input.replaceWith(span);
-      // rebind edit button (since element changed)
-      setupEditBtnAgain();
+      // persist
       if (save && final !== current) {
-        // call backend to persist (if your API exists)
         fetch('/api/save-profile', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token, name: final }) })
           .then(r=> { if (r.ok) showMsg('Profile saved','success'); else showMsg('Save failed','error'); })
           .catch(e=> { console.error(e); showMsg('Save failed','error'); });
       }
     }
-    input.addEventListener('blur', ()=> finish(true));
-    input.addEventListener('keydown', (e)=> { if (e.key === 'Enter') { input.blur(); } if (e.key === 'Escape') { finish(false); } });
+    input.addEventListener('blur', ()=> done(true));
+    input.addEventListener('keydown', (e)=> { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') done(false); });
   });
-
-  function setupEditBtnAgain() {
-    const newBtn = document.getElementById('editNameBtn');
-    if (newBtn) {
-      // ensure visible only when sidebar expanded
-      if (window.innerWidth >= 1024 && !sidebar.classList.contains('collapsed')) newBtn.classList.remove('hidden'); else newBtn.classList.add('hidden');
-      // attach same handler if needed (already attached initial)
-    }
-  }
 })();
 
-/* ========== Init ========== */
+/* logout */
+logoutBtn.addEventListener('click', ()=> location.href='index.html');
+
+/* init */
 fetchFiles();
-refreshStorageSummary();
 lucide.createIcons();
-
-/* When feature panel opened we need to make main area avoid overlap:
-   We toggle a CSS class on <html> or <body> to add app margin-right. */
-(function patchFeatureOpenMargin() {
-  // We already toggle document.documentElement.classList.add('feature-open') in openFeaturePanel
-  // Add CSS rule dynamically so .feature-open affects .app margins
-  const style = document.createElement('style');
-  style.innerHTML = `
-    .feature-open .app { margin-right: calc(var(--feature-w) + var(--app-gap)); }
-  `;
-  document.head.appendChild(style);
-})();
 
 </script>
 </body>
