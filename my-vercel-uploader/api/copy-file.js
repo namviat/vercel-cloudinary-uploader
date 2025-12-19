@@ -1,5 +1,4 @@
 const cloudinary = require('cloudinary').v2;
-const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -23,47 +22,26 @@ module.exports = async (req, res) => {
   });
 
   try {
-    // 1️⃣ Download file
-    const response = await fetch(secureUrl);
-    if (!response.ok) {
-      throw new Error('Failed to fetch source file');
-    }
-
-    const buffer = await response.buffer();
-
-    // 2️⃣ Prepare safe destination name (ALWAYS UNIQUE)
+    // build collision-safe name
     const originalName = publicId.split('/').pop();
     const nameOnly = originalName.replace(/\.[^/.]+$/, '');
     const ext = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
 
-    const uniqueSuffix = Date.now(); // avoids silent overwrite
-    const safeName = `${nameOnly}__${fromToken}_${uniqueSuffix}${ext}`;
+    const safeName = `${nameOnly}__${fromToken}_${Date.now()}${ext}`;
     const destPublicId = `${BASE_FOLDER}/${toToken}/${safeName}`;
 
-    // 3️⃣ Upload buffer (FORCED RESOLUTION)
-    const uploadResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          resource_type: 'raw',
-          public_id: destPublicId,
-          overwrite: false
-        },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else if (!result || !result.public_id) {
-            reject(new Error('Upload completed but no result returned'));
-          } else {
-            resolve(result);
-          }
-        }
-      );
-
-      stream.end(buffer);
+    // 🔥 CLOUDINARY-SIDE COPY (RELIABLE)
+    const result = await cloudinary.uploader.upload(secureUrl, {
+      resource_type: 'raw',
+      public_id: destPublicId,
+      overwrite: false
     });
 
-    // 🔍 Optional: log for debug
-    console.log('Copied file to:', uploadResult.public_id);
+    if (!result || !result.public_id) {
+      throw new Error('Cloudinary copy failed');
+    }
+
+    console.log('Copied file:', result.public_id);
 
     return res.json({ success: true });
 
