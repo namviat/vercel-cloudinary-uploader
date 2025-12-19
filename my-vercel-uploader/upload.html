@@ -139,17 +139,23 @@
   </nav>
 
   <div class="sidebar-footer">
-    <div class="storage-top">
-      <div style="display:flex; gap:8px; align-items:center;">
-        <div class="storage-icon"><i data-lucide="cloud" class="w-4 h-4"></i></div>
-        <div id="storageText" class="storage-text">0.00 GB used</div>
-      </div>
-      <!-- intentionally empty right side; no token count displayed -->
-    </div>
-    <div class="storage-bar" aria-hidden="true">
-      <div id="storageFill" class="storage-fill" style="width:0%"></div>
+
+  <!-- ICON (always visible) -->
+  <div class="storage-icon">
+    <i data-lucide="cloud"></i>
+  </div>
+
+  <!-- TEXT + BAR (HIDDEN WHEN COLLAPSED) -->
+  <div class="storage-details">
+    <div id="storageText" class="storage-text">Loading…</div>
+
+    <div class="storage-bar">
+      <div id="storageFill" class="storage-fill"></div>
     </div>
   </div>
+
+</div>
+
 
   <div class="logout-row">
     <div id="logoutBtn" class="nav-btn" role="button" tabindex="0">
