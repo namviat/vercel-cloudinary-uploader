@@ -127,7 +127,6 @@
     <div class="profile-block label" style="min-width:0;">
       <div class="profile-name-row">
         <div id="profileName" class="profile-name" title="Click pencil to edit">Profile</div>
-        <button id="editNameBtn" class="text-slate-400 hidden" title="Edit name"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
       </div>
       <div id="profileToken" class="profile-token">token: ...</div>
     </div>
@@ -243,7 +242,6 @@ const storageText = document.getElementById('storageText');
 
 const featureButtons = document.querySelectorAll('.feature-btn');
 const logoutBtn = document.getElementById('logoutBtn');
-const editNameBtn = document.getElementById('editNameBtn');
 let files = [];
 
 /* ---------------- Sidebar hover behavior ---------------- */
@@ -251,14 +249,14 @@ function applySidebarHoverBehavior(){
   if (window.innerWidth >= 1024) sidebar.classList.add('collapsed'); else sidebar.classList.remove('collapsed');
 
   sidebar.addEventListener('mouseenter', ()=> {
-    if (window.innerWidth >= 1024) { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); }
+    if (window.innerWidth >= 1024) { sidebar.classList.remove('collapsed'); }
   });
   sidebar.addEventListener('mouseleave', ()=> {
-    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); }
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); }
   });
   window.addEventListener('resize', ()=> {
-    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); editNameBtn.classList.add('hidden'); }
-    else { sidebar.classList.remove('collapsed'); editNameBtn.classList.remove('hidden'); }
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); }
+    else { sidebar.classList.remove('collapsed'); }
   });
 }
 applySidebarHoverBehavior();
@@ -721,40 +719,6 @@ function renderDeleteFeature(){
     }
   });
 }
-
-/* =========================
-   Profile edit (unchanged)
-========================= */
-(function setupProfileEdit(){
-  const nameEl = document.getElementById('profileName');
-  const btn = document.getElementById('editNameBtn');
-
-  btn.addEventListener('click', (ev)=>{
-    ev.stopPropagation();
-    const current = nameEl.textContent.trim();
-    const input = document.createElement('input');
-    input.type='text'; input.value = current; input.className = 'p-1 border rounded text-sm';
-    nameEl.replaceWith(input);
-    input.focus();
-    function done(save){
-      const final = input.value.trim() || current;
-      const span = document.createElement('div');
-      span.id='profileName'; span.className='profile-name'; span.textContent = final;
-      input.replaceWith(span);
-      if (save && final !== current) {
-fetch('/api/token', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ token, name: final })
-})
-          .then(r=> { if (r.ok) showMsg('Profile saved','success'); else showMsg('Save failed','error'); })
-          .catch(e=> { console.error(e); showMsg('Save failed','error'); });
-      }
-    }
-    input.addEventListener('blur', ()=> done(true));
-    input.addEventListener('keydown', (e)=> { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') done(false); });
-  });
-})();
 
 /* logout */
 logoutBtn.addEventListener('click', ()=> location.href='index.html');
