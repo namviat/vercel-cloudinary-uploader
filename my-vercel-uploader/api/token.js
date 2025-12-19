@@ -1,70 +1,35 @@
-// /api/token.js
+// api/token.js
 
-let TOKENS = {}; // in-memory (safe for now)
-
-const adjectives = [
-  "Silent","Crimson","Azure","Shadow","Lunar","Obsidian",
-  "Ivory","Golden","Phantom","Scarlet","Frozen","Storm",
-  "Void","Eternal","Celestial","Midnight","Radiant","Feral"
-];
-
-const nouns = [
-  "Ronin","Samurai","Shinobi","Kitsune","Oni","Dragon",
-  "Lotus","Sakura","Wanderer","Guardian","Fox","Raven","Spirit"
-];
-
-function generateAnimeName(existing) {
-  let name;
-  do {
-    const a = adjectives[Math.floor(Math.random()*adjectives.length)];
-    const n = nouns[Math.floor(Math.random()*nouns.length)];
-    name = `${a} ${n}`;
-  } while (existing.has(name));
-  return name;
-}
-
-export default function handler(req, res) {
-
-  /* ======================
-     GET → fetch or create
-  ====================== */
-  if (req.method === "GET") {
-    const token = req.query.token;
-    if (!token) return res.status(400).json({ error: "Token missing" });
-
-    if (!TOKENS[token]) {
-      const existing = new Set(Object.values(TOKENS).map(t => t.name));
-
-      TOKENS[token] = {
-        token,
-        name: generateAnimeName(existing),
-        avatar: {
-          style: "adventurer",
-          seed: token
-        },
-        createdAt: Date.now()
-      };
-    }
-
-    return res.json(TOKENS[token]);
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  /* ======================
-     POST → update profile
-  ====================== */
-  if (req.method === "POST") {
-    const { token, name } = req.body || {};
-    if (!token || !name) {
-      return res.status(400).json({ error: "Invalid data" });
+  try {
+    let body = req.body;
+
+    // SAFETY: parse body if it's a string
+    if (typeof body === 'string') {
+      body = JSON.parse(body);
     }
 
-    if (!TOKENS[token]) {
-      return res.status(404).json({ error: "Token not found" });
+    const token = body?.token;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'Invalid token' });
+
     }
 
-    TOKENS[token].name = name;
-    return res.json({ ok: true });
+    return res.status(200).json({
+      ok: true,
+      token
+    });
+
+  } catch (error) {
+    console.error('Token API error:', error);
+    return res.status(500).json({
+      error: 'Token API failed',
+      details: error.message
+    });
   }
-
-  res.status(405).end();
-}
+};
