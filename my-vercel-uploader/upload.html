@@ -400,21 +400,17 @@ async function refreshStorageSummary() {
 }
 
   async function loadTokenProfile() {
-  const res = await fetch(`/api/token?token=${encodeURIComponent(token)}`);
+  const res = await fetch(`/api/token?token=${token}`);
   const data = await res.json();
 
-  // name
   document.getElementById('profileName').textContent = data.name;
 
-  // avatar
-  const avatarUrl =
-    `https://api.dicebear.com/7.x/${data.avatar.style}/svg?seed=${data.avatar.seed}`;
-
   document.getElementById('avatarPreview').innerHTML =
-    `<img src="${avatarUrl}" class="w-full h-full rounded-lg" />`;
+    `<img src="https://api.dicebear.com/7.x/${data.avatar.style}/svg?seed=${data.avatar.seed}" />`;
 }
 
 loadTokenProfile();
+
 
   
 function formatSize(bytes) {
