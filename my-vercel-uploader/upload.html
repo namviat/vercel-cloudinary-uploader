@@ -7,63 +7,95 @@
 
 <!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- Icons -->
+<!-- Lucide icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
-  /* Base */
-  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; background:#f5f7fb; color:#0f172a; }
-  .card { background:#fff; border-radius:12px; box-shadow:0 6px 20px rgba(2,6,23,0.06); border:1px solid rgba(2,6,23,0.04); }
+  :root {
+    --sidebar-w: 270px;
+    --sidebar-collapsed-w: 88px;
+    --feature-w: 380px;
+    --app-gap: 32px;
+    --bg: #f5f7fb;
+  }
 
-  /* SIDEBAR (adapted from your smooth hover example) */
+  body { margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:#0f172a; }
+
+  /* ---------- Sidebar (hover-expand) ---------- */
   .sidebar {
     position: fixed;
     left: 16px;
     top: 16px;
     bottom: 16px;
-    width: 270px;
-    background: #ffffff;
-    border-radius: 18px;
-    transition: all .45s cubic-bezier(.175,.885,.32,1.1);
+    width: var(--sidebar-w);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(2,6,23,0.06);
+    transition: width .45s cubic-bezier(.175,.885,.32,1.1);
     overflow: hidden;
-    z-index: 50;
+    z-index: 60;
     display:flex;
     flex-direction:column;
-    padding-bottom:12px;
   }
-  .sidebar.collapsed { width: 88px; }
+  .sidebar.collapsed { width: var(--sidebar-collapsed-w); }
 
-  .sidebar-header { display:flex; align-items:center; gap:12px; padding:20px; }
+  .sidebar-header { display:flex; align-items:center; gap:12px; padding:18px; }
   .avatar { width:44px; height:44px; border-radius:10px; background:#eef2ff; display:flex; align-items:center; justify-content:center; font-weight:700; color:#374151; }
-  .label { transition: all .25s; }
-  .sidebar.collapsed .label { opacity:0; transform:translateX(-8px); pointer-events:none; }
+  .profile-block { display:flex; flex-direction:column; gap:2px; }
+  .profile-name-row { display:flex; gap:8px; align-items:center; }
+  .profile-name { font-weight:600; }
+  .profile-token { font-size:12px; color:#64748b; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
+  /* hide labels when collapsed */
+  .sidebar.collapsed .label { opacity:0; transform:translateX(-8px); pointer-events:none; }
+  .label { transition:all .18s ease; }
+
+  /* nav */
   .nav { padding:10px 12px; flex:1; overflow:auto; }
-  .nav-item { position:relative; margin-bottom:6px; }
+  .nav-item { position:relative; margin-bottom:8px; }
   .nav-btn {
     display:flex; align-items:center; gap:12px;
     padding:12px; border-radius:10px; cursor:pointer; color:#475569;
     transition: all .18s;
   }
-  .nav-btn:hover { background:#f1f5f9; color:#0f172a; transform: translateX(4px); }
+  .nav-btn:hover { background:#f1f5f9; color:#0f172a; transform:translateX(6px); }
   .nav-icon { width:20px; height:20px; flex:0 0 20px; color:inherit; }
 
-  /* Tooltip for collapsed sidebar */
+  /* tooltip for collapsed */
   .tooltip {
-    position:absolute; left:100%; top:50%; transform:translate(10px,-50%); background:#0f172a; color:#fff;
+    position:absolute; left:100%; top:50%;
+    transform:translate(8px,-50%); background:#0f172a; color:#fff;
     padding:6px 10px; border-radius:8px; font-size:12px; opacity:0; pointer-events:none; transition:.18s;
   }
-  .sidebar.collapsed .nav-item:hover .tooltip { opacity:1; transform:translate(18px,-50%); }
+  .sidebar.collapsed .nav-item:hover .tooltip { opacity:1; transform:translate(14px,-50%); }
 
-  /* Storage indicator always visible in sidebar footer */
-  .sidebar-footer { padding:12px; border-top:1px solid rgba(2,6,23,0.03); }
+  /* storage footer */
+  .sidebar-footer { padding:12px; border-top:1px solid rgba(2,6,23,0.03); display:flex; flex-direction:column; gap:8px; }
   .storage-bar { height:8px; background:#eef2ff; border-radius:999px; overflow:hidden; }
-  .storage-fill { height:100%; background:linear-gradient(90deg,#6366f1,#06b6d4); width:0%; transition:width .5s; }
+  .storage-fill { height:100%; background:linear-gradient(90deg,#6366f1,#06b6d4); width:0%; transition:width .5s ease; }
+  .storage-text { font-size:12px; color:#64748b; }
+  .storage-icon { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; color:#475569; }
 
-  /* APP layout: margin-left to make space for sidebar */
-  .app { margin-left: 306px; padding:24px 32px; }
+  /* hide storage text when collapsed (keep icon visible) */
+  .sidebar.collapsed .storage-text { display:none; }
+  .sidebar.collapsed .storage-bar { display:none; }
 
-  /* MAIN area styling */
+  /* logout button */
+  .logout-row { padding:10px 12px; }
+
+  /* ---------- Layout ---------- */
+  .app {
+    margin-left: calc(var(--sidebar-w) + var(--app-gap));
+    padding:28px 32px;
+    transition: margin-right .18s ease, margin-left .18s ease;
+  }
+  /* when collapsed reduce left offset */
+  .sidebar.collapsed ~ .app { margin-left: calc(var(--sidebar-collapsed-w) + var(--app-gap)); }
+
+  /* when feature panel active add right margin so main doesn't overlap / gets shorter */
+  .feature-open { margin-right: calc(var(--feature-w) + var(--app-gap)); }
+
+  /* ---------- Main UI ---------- */
   .upload-box { border:2px dashed #c7d2fe; background:#fff; border-radius:12px; padding:44px; text-align:center; cursor:pointer; transition:.18s; }
   .upload-box:hover { background:#fbfdff; box-shadow:0 8px 30px rgba(2,6,23,0.04); }
   .file-card { background:#fff; border-radius:10px; padding:12px; box-shadow:0 4px 12px rgba(2,6,23,0.03); position:relative; border:1px solid rgba(2,6,23,0.03); }
@@ -71,49 +103,56 @@
   .file-card:hover .file-actions { opacity:1; }
   .file-action-btn { width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.04); cursor:pointer; }
 
-  /* Feature panel on right (hidden by default) */
+  /* ---------- Feature Panel ---------- */
   .feature-panel {
     position: fixed;
     right: 20px;
     top: 16px;
     bottom: 16px;
-    width: 380px;
+    width: var(--feature-w);
     padding:16px;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 14px 40px rgba(2,6,23,0.06);
     display:none;
-    z-index:40;
+    z-index:55;
     overflow:auto;
   }
   .feature-panel.active { display:block; }
 
-  /* small responsive changes */
+  /* responsive tweaks */
   @media (max-width: 1024px) {
-    .sidebar { left:10px; top:10px; bottom:10px; width: 88px; }
-    .app { margin-left:120px; padding:16px; }
-    .feature-panel { display:none !important; } /* keep it off on small screens */
+    .sidebar { left:10px; top:10px; bottom:10px; width: var(--sidebar-collapsed-w); }
+    .app { margin-left: calc(var(--sidebar-collapsed-w) + var(--app-gap)); padding:16px; }
+    .feature-panel { display:none !important; }
   }
 </style>
 </head>
-
 <body>
 
 <!-- SIDEBAR -->
-<aside id="sidebar" class="sidebar collapsed">
+<aside id="sidebar" class="sidebar collapsed" aria-label="Qloud sidebar">
+
+  <!-- header -->
   <div class="sidebar-header">
     <div class="avatar" id="avatarPreview">U</div>
-    <div class="label">
-      <div id="profileName" class="font-semibold text-slate-900">Profile</div>
-      <div id="profileToken" class="text-xs text-slate-500">token: ...</div>
+
+    <div class="profile-block label">
+      <div class="profile-name-row">
+        <div id="profileName" class="profile-name" title="Click pencil to edit">Profile</div>
+        <!-- pencil icon: visible when sidebar expanded (label visible) -->
+        <button id="editNameBtn" title="Edit name" class="ml-1 text-slate-400 hidden" aria-label="Edit name">
+          <i data-lucide="edit-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="profileToken" class="profile-token">token: ...</div>
     </div>
   </div>
 
-  <nav class="nav">
-
-    <!-- Features placed here (no 3-dot). Icons always visible; labels hide when collapsed -->
+  <!-- nav features -->
+  <nav class="nav" role="navigation" aria-label="Features">
     <div class="nav-item">
-      <div class="nav-btn feature-btn" data-feature="search">
+      <div class="nav-btn feature-btn" data-feature="search" role="button" tabindex="0">
         <i data-lucide="search" class="nav-icon"></i>
         <div class="label">Token Search</div>
       </div>
@@ -121,7 +160,7 @@
     </div>
 
     <div class="nav-item">
-      <div class="nav-btn feature-btn" data-feature="merge">
+      <div class="nav-btn feature-btn" data-feature="merge" role="button" tabindex="0">
         <i data-lucide="shuffle" class="nav-icon"></i>
         <div class="label">Token Merge</div>
       </div>
@@ -129,50 +168,51 @@
     </div>
 
     <div class="nav-item">
-      <div class="nav-btn feature-btn" data-feature="delete">
+      <div class="nav-btn feature-btn" data-feature="delete" role="button" tabindex="0">
         <i data-lucide="trash-2" class="nav-icon"></i>
         <div class="label">Delete Token</div>
       </div>
       <div class="tooltip">Delete Token</div>
     </div>
 
-    <!-- Add other features here if you want (keep consistent) -->
-
   </nav>
 
+  <!-- footer: storage indicator (always visible, text hidden when collapsed) -->
   <div class="sidebar-footer">
-    <div class="text-xs text-slate-500 mb-2">Overall storage</div>
-    <div class="storage-bar">
-      <div id="storageFill" class="storage-fill"></div>
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="storage-icon"><i data-lucide="cloud" class="w-4 h-4"></i></div>
+        <div id="storageText" class="storage-text">0.00 GB used</div> <!-- token count removed -->
+      </div>
     </div>
-    <div id="storageText" class="text-xs text-slate-500 mt-2"></div>
+    <div class="storage-bar">
+      <div id="storageFill" class="storage-fill" style="width:0%"></div>
+    </div>
   </div>
 
-  <div style="padding:10px 12px;">
-    <div class="nav-item">
-      <div id="logoutBtn" class="nav-btn">
-        <i data-lucide="log-out" class="nav-icon"></i><div class="label">Logout</div>
-      </div>
+  <!-- logout -->
+  <div class="logout-row">
+    <div id="logoutBtn" class="nav-btn" role="button" tabindex="0">
+      <i data-lucide="log-out" class="nav-icon"></i>
+      <div class="label">Logout</div>
     </div>
   </div>
 </aside>
 
-<!-- APP CONTENT -->
-<div class="app">
+<!-- APP -->
+<main class="app" id="app">
+  <div class="max-w-5xl mx-auto">
 
-  <!-- main content -->
-  <main class="max-w-5xl mx-auto">
     <div id="msg" class="hidden mb-4"></div>
 
-    <!-- UPLOAD BOX -->
-    <div id="uploadBox" class="upload-box">
+    <!-- UPLOAD BOX (functional code preserved) -->
+    <div id="uploadBox" class="upload-box card">
       <input id="fileInput" type="file" multiple hidden />
       <div class="text-4xl mb-2">☁️</div>
       <div class="font-semibold">Click or drag & drop files here</div>
       <div class="text-sm text-slate-500 mt-1">Files are private to this token</div>
     </div>
 
-    <!-- Progress -->
     <div id="progressWrap" class="hidden mt-4">
       <div class="w-full bg-slate-100 h-2 rounded overflow-hidden">
         <div id="progressFill" class="h-2 bg-gradient-to-r from-indigo-500 to-cyan-400" style="width:0%"></div>
@@ -180,42 +220,40 @@
       <div id="statusText" class="text-xs text-slate-500 mt-1"></div>
     </div>
 
-    <!-- Files -->
+    <!-- Files grid -->
     <section class="mt-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-semibold">Files <span id="count" class="text-sm text-slate-500"></span></h2>
       </div>
-
       <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
     </section>
-  </main>
-</div>
 
-<!-- RIGHT FEATURE PANEL (hidden by default) -->
+  </div>
+</main>
+
+<!-- Feature panel (right). Hidden until user clicks a feature. -->
 <aside id="featurePanel" class="feature-panel" aria-hidden="true"></aside>
 
-<!-- lucide icons -->
 <script>lucide.createIcons()</script>
 
-<!-- ================= JAVASCRIPT: functionality preserved ================= -->
 <script>
 /* =========================
    CONFIG (unchanged)
+   Keep all endpoints and their behavior intact.
 ========================= */
 const CLOUD_NAME = 'dzvz7kzin';
 const UPLOAD_PRESET = 'mycloud_unsigned';
 const BASE_FOLDER = 'mycloud';
 
 const token = new URLSearchParams(location.search).get('token');
-if (!token) {
-  // If token missing, go to homepage (original behavior)
-  location.href = 'index.html';
-}
-document.getElementById('profileToken').textContent = token ? token : '';
+if (!token) location.href = 'index.html';
+document.getElementById('profileToken').textContent = token;
 
-/* =========================
-   UI REFS
-========================= */
+/* UI refs */
+const sidebar = document.getElementById('sidebar');
+const app = document.getElementById('app');
+const featurePanel = document.getElementById('featurePanel');
+
 const uploadBox = document.getElementById('uploadBox');
 const fileInput = document.getElementById('fileInput');
 const fileGrid = document.getElementById('fileGrid');
@@ -225,56 +263,50 @@ const progressWrap = document.getElementById('progressWrap');
 const progressFill = document.getElementById('progressFill');
 const statusText = document.getElementById('statusText');
 
-const featurePanel = document.getElementById('featurePanel');
-const featureButtons = document.querySelectorAll('.feature-btn');
-const sidebar = document.getElementById('sidebar');
-const logoutBtn = document.getElementById('logoutBtn');
 const storageFill = document.getElementById('storageFill');
 const storageText = document.getElementById('storageText');
 
+const featureButtons = document.querySelectorAll('.feature-btn');
+const logoutBtn = document.getElementById('logoutBtn');
+
 let files = [];
 
-/* =========================
-   Sidebar hover behavior (from your provided code)
-========================= */
+/* ---------------- Sidebar hover behavior (from your example) ---------------- */
 function applySidebarHoverBehavior() {
-  // collapsed by default on large screens
-  if (window.innerWidth >= 1024) {
-    sidebar.classList.add('collapsed');
-  } else {
+  if (window.innerWidth >= 1024) sidebar.classList.add('collapsed'); else sidebar.classList.remove('collapsed');
+
+  sidebar.addEventListener('mouseenter', () => { if (window.innerWidth >= 1024) {
     sidebar.classList.remove('collapsed');
-  }
-
-  sidebar.addEventListener('mouseenter', () => {
-    if (window.innerWidth >= 1024) sidebar.classList.remove('collapsed');
-  });
-  sidebar.addEventListener('mouseleave', () => {
-    if (window.innerWidth >= 1024) sidebar.classList.add('collapsed');
-  });
-
-  window.addEventListener('resize', () => {
-    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); }
-    else { sidebar.classList.remove('collapsed'); featurePanel.classList.remove('active'); featurePanel.setAttribute('aria-hidden','true'); }
+    // show edit pencil when expanded
+    showEditPencil(true);
+  }});
+  sidebar.addEventListener('mouseleave', () => { if (window.innerWidth >= 1024) {
+    sidebar.classList.add('collapsed');
+    showEditPencil(false);
+  }});
+  window.addEventListener('resize', ()=> {
+    if (window.innerWidth >= 1024) { sidebar.classList.add('collapsed'); showEditPencil(false); }
+    else { sidebar.classList.remove('collapsed'); showEditPencil(true); } // mobile: labels visible
   });
 }
 applySidebarHoverBehavior();
 
-/* =========================
-   DISPLAY MESSAGES
-========================= */
-function showMsg(text, type='info') {
+/* Show/hide pencil edit icon for profile name */
+function showEditPencil(show) {
+  const btn = document.getElementById('editNameBtn');
+  if (!btn) return;
+  if (show) btn.classList.remove('hidden'); else btn.classList.add('hidden');
+}
+
+/* -------------- messages -------------- */
+function showMsg(text, type='info'){
   msgEl.textContent = text;
-  msgEl.className = 'p-3 rounded mb-4 text-sm ' +
-    (type==='success' ? 'bg-emerald-50 text-emerald-700' :
-     type==='error' ? 'bg-red-50 text-red-700' :
-     'bg-slate-50 text-slate-700');
+  msgEl.className = 'p-3 rounded mb-4 text-sm ' + (type==='success' ? 'bg-emerald-50 text-emerald-700' : type==='error' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700');
   msgEl.classList.remove('hidden');
   setTimeout(()=> msgEl.classList.add('hidden'), 3000);
 }
 
-/* =========================
-   FILE ICON HELPER
-========================= */
+/* -------------- file icon helper -------------- */
 function getFileIcon(publicId) {
   const ext = (publicId.split('.').pop() || '').toLowerCase();
   if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
@@ -286,9 +318,8 @@ function getFileIcon(publicId) {
   return 'file';
 }
 
-/* =========================
-   FETCH FILES (original behavior)
-========================= */
+/* ========== FILES: fetch/render/upload/delete/download ========== */
+/* Fetch files (unchanged) */
 async function fetchFiles() {
   try {
     const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
@@ -301,9 +332,7 @@ async function fetchFiles() {
   }
 }
 
-/* =========================
-   RENDER FILES (UI only)
-========================= */
+/* Render */
 function renderFiles() {
   countEl.textContent = `(${files.length})`;
   fileGrid.innerHTML = '';
@@ -311,95 +340,64 @@ function renderFiles() {
     fileGrid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-8">No files uploaded yet</div>';
     return;
   }
-
-  files.forEach(f => {
+  files.forEach(f=>{
     const name = f.public_id.split('/').pop();
     const size = (f.bytes / 1024 / 1024).toFixed(2);
     const icon = getFileIcon(f.public_id);
-
     const card = document.createElement('div');
     card.className = 'file-card';
-
     card.innerHTML = `
       <div class="file-actions">
         <button class="file-action-btn download-btn" title="Download"><i data-lucide="download" class="w-4 h-4"></i></button>
         <button class="file-action-btn delete-btn" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
       </div>
-
       <div class="text-3xl mb-2 text-indigo-500"><i data-lucide="${icon}"></i></div>
       <div class="font-semibold truncate">${name}</div>
       <div class="text-xs text-slate-500 mt-1">${size} MB</div>
     `;
-
-    // attach handlers (preserve behavior)
-    card.querySelector('.download-btn').onclick = () => forceDownload(f.secure_url, name);
-    card.querySelector('.delete-btn').onclick = () => deleteFile(f.public_id);
-
+    card.querySelector('.download-btn').onclick = ()=> forceDownload(f.secure_url, name);
+    card.querySelector('.delete-btn').onclick = ()=> deleteFile(f.public_id);
     fileGrid.appendChild(card);
   });
-
-  lucide.createIcons(); // refresh icons
+  lucide.createIcons();
 }
 
-/* =========================
-   UPLOAD (original behavior)
-========================= */
+/* Upload */
 uploadBox.addEventListener('click', ()=> fileInput.click());
-
-uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
-uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('ring-2','ring-indigo-200'));
-uploadBox.addEventListener('drop', e => { e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
-
-fileInput.onchange = e => uploadFiles([...e.target.files]);
+uploadBox.addEventListener('dragover', e=> { e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
+uploadBox.addEventListener('dragleave', ()=> uploadBox.classList.remove('ring-2','ring-indigo-200'));
+uploadBox.addEventListener('drop', e=> { e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
+fileInput.onchange = e=> uploadFiles([...e.target.files]);
 
 async function uploadFiles(list) {
   if (!list.length) return;
   progressWrap.classList.remove('hidden');
-
   for (let i=0;i<list.length;i++){
     const fd = new FormData();
     fd.append('file', list[i]);
     fd.append('upload_preset', UPLOAD_PRESET);
     fd.append('folder', `${BASE_FOLDER}/${token}`);
-
     statusText.textContent = `Uploading ${list[i].name}`;
     progressFill.style.width = ((i+1)/list.length*100)+'%';
-
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method:'POST', body:fd });
-    if (!res.ok) {
-      showMsg(`Upload failed: ${list[i].name}`,'error');
-      break;
-    }
+    if (!res.ok) { showMsg(`Upload failed: ${list[i].name}`,'error'); break; }
   }
-
   progressWrap.classList.add('hidden');
   progressFill.style.width = '0%';
   fetchFiles();
 }
 
-/* =========================
-   DELETE (original behavior)
-========================= */
+/* Delete and download (unchanged) */
 async function deleteFile(publicId) {
   try {
-    const res = await fetch('/api/delete-file', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ public_id: publicId })
-    });
+    const res = await fetch('/api/delete-file', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ public_id: publicId }) });
     if (!res.ok) throw new Error();
     fetchFiles();
     showMsg('File deleted','success');
-  } catch (err) {
-    console.error(err);
-    showMsg('Delete failed','error');
-  }
+  } catch (err) { console.error(err); showMsg('Delete failed','error'); }
 }
 
-/* =========================
-   FORCE DOWNLOAD (original)
-========================= */
-async function forceDownload(url, filename){
+async function forceDownload(url, filename) {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error();
@@ -411,16 +409,13 @@ async function forceDownload(url, filename){
     a.click();
     a.remove();
     URL.revokeObjectURL(a.href);
-  } catch (err) {
-    console.error(err);
-    showMsg('Download failed','error');
-  }
+  } catch (err) { console.error(err); showMsg('Download failed','error'); }
 }
 
-/* =========================
-   STORAGE SUMMARY (always-visible bar)
-   - uses /api/storage-summary
-========================= */
+/* ========== Storage summary (always visible) ==========
+   Uses your API /api/storage-summary (server code you provided). :contentReference[oaicite:1]{index=1}
+   We DO NOT show token count here (removed as requested).
+======================================================== */
 async function refreshStorageSummary() {
   try {
     const res = await fetch('/api/storage-summary');
@@ -428,7 +423,7 @@ async function refreshStorageSummary() {
     const data = await res.json();
     const percent = data.limitBytes ? Math.min(100, Math.round(data.totalBytes / data.limitBytes * 100)) : 0;
     storageFill.style.width = percent + '%';
-    storageText.textContent = `${(data.totalBytes / (1024*1024*1024)).toFixed(2)} GB used • ${data.tokensCount || 0} tokens`;
+    storageText.textContent = `${(data.totalBytes / (1024*1024*1024)).toFixed(2)} GB used`;
   } catch (e) {
     console.error(e);
     storageFill.style.width = '0%';
@@ -436,68 +431,58 @@ async function refreshStorageSummary() {
   }
 }
 
-/* =========================
-   FEATURE PANEL CONTROL (open specific feature UI)
-   - clicking a feature loads the feature UI into right panel
-   - clicking same feature closes panel
-   - these UIs call your existing endpoints (no logic change)
-========================= */
-
+/* ========== Feature panel control (no logic changes) ==========
+   Clicking a feature loads the corresponding UI into the right panel.
+   Clicking again closes it. Opening sets .feature-open on app to prevent overlap.
+================================================================= */
 let activeFeature = null;
-
-function closeFeaturePanel(){
+function closeFeaturePanel() {
   featurePanel.classList.remove('active');
   featurePanel.innerHTML = '';
   featurePanel.setAttribute('aria-hidden','true');
+  document.documentElement.classList.remove('feature-open'); // remove global class (adjust margins)
   activeFeature = null;
 }
-
 function openFeaturePanel(name) {
-  // toggle: same button closes
   if (activeFeature === name) { closeFeaturePanel(); return; }
-  // else render UI for the feature
   activeFeature = name;
   featurePanel.classList.add('active');
   featurePanel.setAttribute('aria-hidden','false');
+  document.documentElement.classList.add('feature-open'); // body/html will have .feature-open in CSS to shift main
   featurePanel.innerHTML = ''; // clear
-
   if (name === 'search') renderSearchFeature();
   else if (name === 'merge') renderMergeFeature();
   else if (name === 'delete') renderDeleteFeature();
-  else { featurePanel.innerHTML = '<div class="text-sm text-slate-500">Feature not implemented</div>'; }
+  else featurePanel.innerHTML = '<div class="text-sm text-slate-500">Feature not implemented</div>';
 }
+featureButtons.forEach(btn => btn.addEventListener('click', ()=> openFeaturePanel(btn.dataset.feature)));
 
-/* Hook feature buttons */
-featureButtons.forEach(btn => {
-  btn.addEventListener('click', ()=> openFeaturePanel(btn.dataset.feature) );
+/* Close when clicking outside (except sidebar & featurePanel) */
+document.addEventListener('click', (e)=> {
+  if (e.target.closest('.nav-btn') || e.target.closest('#featurePanel')) return;
+  if (featurePanel.classList.contains('active')) closeFeaturePanel();
 });
 
-/* Logout */
-logoutBtn.addEventListener('click', ()=> location.href = 'index.html');
-
-/* =========================
-   Token Search feature UI
-   - debounced typing
-   - uses /api/search-tokens?q=
-   - DOES NOT navigate to another token or auto-open
-========================= */
-function debounce(fn, wait=350){
-  let t;
-  return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this,args), wait); };
-}
+/* ========== Token Search feature ==========
+   Debounced typing, uses /api/search-tokens
+   DOES NOT navigate automatically. Selecting a token dispatches event 'qloud-token-selected'
+   so Merge panel can pick it (as before).
+================================================ */
+function debounce(fn, wait=350){ let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), wait); }; }
 
 function renderSearchFeature() {
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-3">Token Search</h3>
-    <div class="text-sm text-slate-500 mb-3">Search tokens by id or name. Results are selectable (for merge).</div>
-    <input id="searchInput" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3"/>
+    <div class="text-sm text-slate-500 mb-3">Search tokens by id or name. Use Select to make a token available for Merge (no navigation).</div>
+    <input id="searchInput" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3" />
     <div id="searchResults" class="space-y-2"></div>
   `;
+  lucide.createIcons();
 
   const si = document.getElementById('searchInput');
   const results = document.getElementById('searchResults');
 
-  const doSearch = debounce(async (q) => {
+  const doSearch = debounce(async (q)=>{
     if (!q) { results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
     results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
     try {
@@ -508,55 +493,48 @@ function renderSearchFeature() {
       if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
       results.innerHTML = '';
       hits.forEach(t => {
-        // render each result; NO navigation
         const row = document.createElement('div');
         row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
         row.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
-                         <div class="flex gap-2">
-                           <button class="select-token text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-token="${t.id}">Select</button>
-                         </div>`;
+          <div class="flex gap-2">
+            <button class="select-token text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-token="${t.id}">Select</button>
+          </div>`;
         results.appendChild(row);
       });
-
-      // attach select handlers (emit custom event for merge panel)
+      // attach handlers: dispatch event 'qloud-token-selected' (merge listens for it)
       results.querySelectorAll('.select-token').forEach(b=>{
-        b.onclick = ()=> {
+        b.addEventListener('click', ()=> {
           const id = b.dataset.token;
-          // dispatch a window-level event so merge panel can pick it up
-          window.dispatchEvent(new CustomEvent('qloud-token-selected', { detail: { id } }));
-          showMsg('Token selected (available for merge)', 'success');
-        };
+          window.dispatchEvent(new CustomEvent('qloud-token-selected', { detail:{ id } }));
+          showMsg('Token selected for merge', 'success');
+        });
       });
-
     } catch (e) {
       console.error(e);
       results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
     }
-  });
+  }, 400);
 
-  si.addEventListener('input', (e)=> doSearch(e.target.value.trim()));
+  si.addEventListener('input', (ev)=> doSearch(ev.target.value.trim()));
 }
 
-/* =========================
-   Merge feature UI
-   - uses /api/search-tokens and /api/merge-tokens
-   - selected sources handled locally here
-   - also listens to the 'qloud-token-selected' event from search feature
-========================= */
-function renderMergeFeature(){
+/* ========== Merge feature ==========
+   Renders UI and calls existing /api/merge-tokens when user clicks Merge.
+   Listens to global 'qloud-token-selected' to add sources selected via Search.
+==================================================================== */
+function renderMergeFeature() {
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-2">Merge tokens into <strong>${token}</strong></h3>
-    <div class="text-sm text-slate-500 mb-3">Search tokens to add as sources or use Search feature to pick tokens.</div>
-
-    <input id="mergeSearch" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3"/>
-    <div id="mergeSearchResults" class="space-y-2 mb-3"></div>
+    <div class="text-sm text-slate-500 mb-3">Search tokens here or use the Search feature to pick tokens.</div>
+    <input id="mergeSearch" placeholder="Search tokens..." class="w-full p-2 border border-slate-100 rounded mb-3" />
+    <div id="mergeResults" class="space-y-2 mb-3"></div>
 
     <div class="text-xs text-slate-500 mb-2">Selected sources</div>
     <div id="mergeSelected" class="space-y-2 mb-3"><div class="text-sm text-slate-500">No sources selected</div></div>
 
     <div class="mb-3">
       <label class="text-xs text-slate-500">Type <strong>MERGE</strong> to enable</label>
-      <input id="mergeConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type MERGE"/>
+      <input id="mergeConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type MERGE" />
     </div>
 
     <div class="flex justify-end">
@@ -565,17 +543,18 @@ function renderMergeFeature(){
 
     <div id="mergeStatus" class="text-sm text-slate-500 mt-3"></div>
   `;
+  lucide.createIcons();
 
-  const searchInput = document.getElementById('mergeSearch');
-  const results = document.getElementById('mergeSearchResults');
+  const results = document.getElementById('mergeResults');
   const selectedEl = document.getElementById('mergeSelected');
+  const searchInput = document.getElementById('mergeSearch');
   const confirmInput = document.getElementById('mergeConfirm');
   const doMergeBtn = document.getElementById('doMergeBtn');
   const mergeStatus = document.getElementById('mergeStatus');
 
   let selected = [];
 
-  async function doSearch(q) {
+  async function search(q) {
     if (!q) { results.innerHTML = '<div class="text-sm text-slate-500">Type to search</div>'; return; }
     results.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
     try {
@@ -586,60 +565,56 @@ function renderMergeFeature(){
       if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
       results.innerHTML = '';
       hits.forEach(t=>{
-        const row = document.createElement('div');
-        row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
-        row.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
-                         <div class="flex gap-2">
-                           <button class="add-source text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-id="${t.id}">Add</button>
-                         </div>`;
-        results.appendChild(row);
+        const r = document.createElement('div');
+        r.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+        r.innerHTML = `<div class="truncate text-sm">${t.id}${t.name ? ' — '+t.name : ''}</div>
+          <div class="flex gap-2">
+            <button class="add-source text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700" data-id="${t.id}">Add</button>
+          </div>`;
+        results.appendChild(r);
       });
-
-      // attach add handlers
+      // hook add
       results.querySelectorAll('.add-source').forEach(b=>{
         b.onclick = ()=> {
           const id = b.dataset.id;
           if (id === token) { showMsg('Cannot add current token','error'); return; }
-          if (selected.includes(id)) { showMsg('Already selected','info'); return; }
-          selected.push(id); renderSelected();
+          if (selected.includes(id)) { showMsg('Already added','info'); return; }
+          selected.push(id);
+          renderSelected();
         };
       });
-
     } catch (e) {
       console.error(e);
       results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
     }
   }
-
-  const debouncedSearch = debounce(doSearch, 350);
+  const debouncedSearch = debounce(search, 350);
   searchInput.addEventListener('input', (e)=> debouncedSearch(e.target.value.trim()));
 
-  function renderSelected(){
+  function renderSelected() {
     selectedEl.innerHTML = '';
     if (!selected.length) { selectedEl.innerHTML = '<div class="text-sm text-slate-500">No sources selected</div>'; return; }
     selected.forEach(s=>{
-      const r = document.createElement('div');
-      r.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
-      r.innerHTML = `<div class="truncate text-sm">${s}</div>
-                     <button class="remove-source text-xs px-2 py-1 rounded bg-red-100 text-red-700" data-id="${s}">Remove</button>`;
-      selectedEl.appendChild(r);
-      r.querySelector('.remove-source').onclick = ()=> {
+      const row = document.createElement('div');
+      row.className = 'p-2 border border-slate-100 rounded flex items-center justify-between';
+      row.innerHTML = `<div class="truncate text-sm">${s}</div><button class="remove-source text-xs px-2 py-1 rounded bg-red-100 text-red-700" data-id="${s}">Remove</button>`;
+      selectedEl.appendChild(row);
+      row.querySelector('.remove-source').onclick = ()=> {
         selected = selected.filter(x=> x !== s);
         renderSelected();
-        updateMergeButton();
+        updateButton();
       };
     });
-    updateMergeButton();
+    updateButton();
   }
 
-  function updateMergeButton(){
+  function updateButton(){
     if (confirmInput.value.trim() === 'MERGE' && selected.length > 0) { doMergeBtn.disabled = false; doMergeBtn.classList.remove('opacity-60'); }
     else { doMergeBtn.disabled = true; doMergeBtn.classList.add('opacity-60'); }
   }
+  confirmInput.addEventListener('input', updateButton);
 
-  confirmInput.addEventListener('input', updateMergeButton);
-
-  // support selecting tokens from search feature (global event)
+  // listen for 'qloud-token-selected' from the Search feature
   const tokenSelectHandler = (ev) => {
     const id = ev.detail?.id;
     if (!id) return;
@@ -648,19 +623,17 @@ function renderMergeFeature(){
   };
   window.addEventListener('qloud-token-selected', tokenSelectHandler);
 
-  doMergeBtn.addEventListener('click', async ()=> {
+  doMergeBtn.addEventListener('click', async ()=>{
     if (!selected.length) return showMsg('Add at least one source','error');
     if (confirmInput.value.trim() !== 'MERGE') return showMsg('Type MERGE to confirm','error');
     mergeStatus.textContent = 'Merging...';
     try {
-      const res = await fetch('/api/merge-tokens', {
-        method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dest: token, sources: selected })
-      });
+      const res = await fetch('/api/merge-tokens', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ dest: token, sources: selected }) });
       if (!res.ok) throw new Error(await res.text());
       mergeStatus.textContent = 'Merge successful';
       showMsg('Merge successful','success');
-      selected = []; renderSelected(); confirmInput.value = ''; updateMergeButton();
-      fetchFiles(); // refresh files to reflect change
+      selected = []; renderSelected(); confirmInput.value = ''; updateButton();
+      fetchFiles();
     } catch (e) {
       console.error(e);
       mergeStatus.textContent = 'Merge failed';
@@ -668,24 +641,21 @@ function renderMergeFeature(){
     }
   });
 
-  // cleanup when panel closed: remove listener
-  const observer = new MutationObserver(()=> {
+  // cleanup on panel close via MutationObserver
+  const obs = new MutationObserver(()=> {
     if (!featurePanel.classList.contains('active')) {
       window.removeEventListener('qloud-token-selected', tokenSelectHandler);
-      observer.disconnect();
+      obs.disconnect();
     }
   });
-  observer.observe(featurePanel, { attributes: true, attributeFilter: ['class'] });
+  obs.observe(featurePanel, { attributes:true, attributeFilter:['class'] });
 }
 
-/* =========================
-   Delete Token UI (calls /api/delete-token)
-   - requires typing DELETE to enable
-========================= */
-function renderDeleteFeature(){
+/* ========== Delete token UI ========== */
+function renderDeleteFeature() {
   featurePanel.innerHTML = `
     <h3 class="text-lg font-semibold mb-2">Delete token</h3>
-    <div class="text-sm text-slate-500 mb-4">This will permanently delete token <strong>${token}</strong> and all files inside.</div>
+    <div class="text-sm text-slate-500 mb-3">This will permanently delete token <strong>${token}</strong> and all files inside.</div>
     <div class="mb-3">
       <label class="text-xs text-slate-500">Type <strong>DELETE</strong> to enable</label>
       <input id="deleteConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type DELETE"/>
@@ -693,17 +663,17 @@ function renderDeleteFeature(){
     <div class="flex justify-end"><button id="doDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Delete token</button></div>
     <div id="deleteStatus" class="text-sm text-slate-500 mt-3"></div>
   `;
+  lucide.createIcons();
 
-  const confirmInput = document.getElementById('deleteConfirm');
-  const doDeleteBtn = document.getElementById('doDeleteBtn');
-  const deleteStatus = document.getElementById('deleteStatus');
+  const input = document.getElementById('deleteConfirm');
+  const btn = document.getElementById('doDeleteBtn');
+  const status = document.getElementById('deleteStatus');
 
-  confirmInput.addEventListener('input', ()=> {
-    if (confirmInput.value.trim() === 'DELETE') { doDeleteBtn.disabled = false; doDeleteBtn.classList.remove('opacity-60'); }
-    else { doDeleteBtn.disabled = true; doDeleteBtn.classList.add('opacity-60'); }
+  input.addEventListener('input', ()=> {
+    if (input.value.trim() === 'DELETE') { btn.disabled = false; btn.classList.remove('opacity-60'); } else { btn.disabled = true; btn.classList.add('opacity-60'); }
   });
 
-  doDeleteBtn.addEventListener('click', async ()=> {
+  btn.addEventListener('click', async ()=>{
     if (!confirm('Delete this token and all its files? This is irreversible.')) return;
     try {
       const res = await fetch('/api/delete-token', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token }) });
@@ -712,32 +682,75 @@ function renderDeleteFeature(){
       location.href = 'index.html';
     } catch (e) {
       console.error(e);
-      deleteStatus.textContent = 'Delete failed';
+      status.textContent = 'Delete failed';
       showMsg('Delete failed','error');
     }
   });
 }
 
-/* =========================
-   Initialization: load files & storage
-========================= */
+/* ========== Profile name editing (UI only + save via /api/save-profile if present) ========== */
+(function setupProfileEdit(){
+  const nameEl = document.getElementById('profileName');
+  const editBtn = document.getElementById('editNameBtn');
+
+  // create inline input when edit clicked
+  editBtn.addEventListener('click', async (ev)=> {
+    ev.stopPropagation();
+    const current = nameEl.textContent.trim();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current;
+    input.className = 'p-1 border rounded text-sm';
+    nameEl.replaceWith(input);
+    input.focus();
+    // handle save on blur or Enter
+    function finish(save) {
+      const final = input.value.trim() || current;
+      const span = document.createElement('div');
+      span.id = 'profileName';
+      span.className = 'profile-name';
+      span.textContent = final;
+      input.replaceWith(span);
+      // rebind edit button (since element changed)
+      setupEditBtnAgain();
+      if (save && final !== current) {
+        // call backend to persist (if your API exists)
+        fetch('/api/save-profile', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token, name: final }) })
+          .then(r=> { if (r.ok) showMsg('Profile saved','success'); else showMsg('Save failed','error'); })
+          .catch(e=> { console.error(e); showMsg('Save failed','error'); });
+      }
+    }
+    input.addEventListener('blur', ()=> finish(true));
+    input.addEventListener('keydown', (e)=> { if (e.key === 'Enter') { input.blur(); } if (e.key === 'Escape') { finish(false); } });
+  });
+
+  function setupEditBtnAgain() {
+    const newBtn = document.getElementById('editNameBtn');
+    if (newBtn) {
+      // ensure visible only when sidebar expanded
+      if (window.innerWidth >= 1024 && !sidebar.classList.contains('collapsed')) newBtn.classList.remove('hidden'); else newBtn.classList.add('hidden');
+      // attach same handler if needed (already attached initial)
+    }
+  }
+})();
+
+/* ========== Init ========== */
 fetchFiles();
 refreshStorageSummary();
-
-/* =========================
-   Expose close feature control: clicking outside right panel closes it
-========================= */
-document.addEventListener('click', (e) => {
-  // if click is inside a nav-btn or inside featurePanel, ignore
-  if (e.target.closest('.nav-btn') || e.target.closest('#featurePanel')) return;
-  // else close panel
-  if (featurePanel.classList.contains('active')) closeFeaturePanel();
-});
-
-/* =========================
-   Make lucide icons show (initial) and whenever we inject UI
-========================= */
 lucide.createIcons();
+
+/* When feature panel opened we need to make main area avoid overlap:
+   We toggle a CSS class on <html> or <body> to add app margin-right. */
+(function patchFeatureOpenMargin() {
+  // We already toggle document.documentElement.classList.add('feature-open') in openFeaturePanel
+  // Add CSS rule dynamically so .feature-open affects .app margins
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .feature-open .app { margin-right: calc(var(--feature-w) + var(--app-gap)); }
+  `;
+  document.head.appendChild(style);
+})();
+
 </script>
 </body>
 </html>
