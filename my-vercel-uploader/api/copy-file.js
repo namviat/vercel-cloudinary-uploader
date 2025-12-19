@@ -22,8 +22,8 @@ module.exports = async (req, res) => {
     api_secret: process.env.CLOUDINARY_API_SECRET || '0AhRs9vHrqghA5ZcXRyMckXlGjk'
   });
 
-try {
-    // 1️⃣ Download the file from Cloudinary
+  try {
+    // 1️⃣ Download file
     const response = await fetch(secureUrl);
     if (!response.ok) {
       throw new Error('Failed to fetch source file');
@@ -31,32 +31,39 @@ try {
 
     const buffer = await response.buffer();
 
-    // 2️⃣ Prepare destination filename
+    // 2️⃣ Prepare safe destination name (ALWAYS UNIQUE)
     const originalName = publicId.split('/').pop();
     const nameOnly = originalName.replace(/\.[^/.]+$/, '');
-    const ext = originalName.includes('.')
-      ? '.' + originalName.split('.').pop()
-      : '';
+    const ext = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
 
-    const safeName = `${nameOnly}__${fromToken}${ext}`;
+    const uniqueSuffix = Date.now(); // avoids silent overwrite
+    const safeName = `${nameOnly}__${fromToken}_${uniqueSuffix}${ext}`;
     const destPublicId = `${BASE_FOLDER}/${toToken}/${safeName}`;
 
-    // 3️⃣ Upload buffer to Cloudinary
-    await new Promise((resolve, reject) => {
+    // 3️⃣ Upload buffer (FORCED RESOLUTION)
+    const uploadResult = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           resource_type: 'raw',
           public_id: destPublicId,
-          type: 'upload'
+          overwrite: false
         },
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            reject(error);
+          } else if (!result || !result.public_id) {
+            reject(new Error('Upload completed but no result returned'));
+          } else {
+            resolve(result);
+          }
         }
       );
 
       stream.end(buffer);
     });
+
+    // 🔍 Optional: log for debug
+    console.log('Copied file to:', uploadResult.public_id);
 
     return res.json({ success: true });
 
