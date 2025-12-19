@@ -3,141 +3,121 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Qloud — Upload</title>
+<title>Qloud — Upload (Dashmin-style)</title>
 
-<!-- Tailwind CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
-  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-  /* subtle card */
-  .card { background: #ffffff; border: 1px solid rgba(15,23,42,0.04); box-shadow: 0 6px 18px rgba(15,23,42,0.04); }
-  .file-card { position: relative; }
-  .file-actions { position: absolute; top: 8px; right: 8px; display:flex; gap:6px; opacity:0; transition:opacity .18s ease; }
-  .file-card:hover .file-actions { opacity: 1; }
-  .file-action-btn { width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background: rgba(2,6,23,0.05); cursor:pointer; }
-  .file-action-btn:hover { background: rgba(2,6,23,0.08); }
-  /* upload hero glow */
-  #uploadBox { position: relative; overflow: visible; }
-  #uploadBox::after { content:""; position:absolute; inset:-6px; border-radius:12px; background: linear-gradient(90deg,#6366f1,#06b6d4); opacity:0; filter: blur(18px); z-index:-1; transition:opacity .25s ease; }
-  #uploadBox:hover::after { opacity: .12; }
-  /* feature panel scrollbar */
-  #featurePanel { max-height: calc(100vh - 140px); overflow:auto; }
+  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f3f4f6; color:#0f172a; }
+  /* cards */
+  .card { background:#fff; border:1px solid rgba(15,23,42,0.04); box-shadow:0 6px 18px rgba(15,23,42,0.03); }
+  .file-card { position:relative; }
+  .file-actions { position:absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:opacity .15s ease; }
+  .file-card:hover .file-actions { opacity:1; }
+  .file-action-btn { width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; background: rgba(2,6,23,0.04); cursor:pointer; }
+  .file-action-btn:hover { background: rgba(2,6,23,0.07); }
+  /* upload glow */
+  #uploadBox { position:relative; }
+  #uploadBox::after { content:""; position:absolute; inset:-6px; border-radius:12px; background: linear-gradient(90deg,#eff6ff,#ecfeff); opacity:0; filter: blur(14px); z-index:-1; transition:opacity .18s ease; }
+  #uploadBox:hover::after { opacity:.55; }
+  /* sidebar nav style */
+  .side-nav button { width:100%; text-align:left; padding:10px 12px; border-radius:8px; display:flex; gap:10px; align-items:center; color:#0f172a; }
+  .side-nav button:hover { background:#f8fafc; }
+  /* feature panel scroll */
+  #featurePanel { max-height: calc(100vh - 120px); overflow:auto; }
 </style>
 </head>
+<body>
 
-<body class="bg-gray-100 text-slate-800 min-h-screen">
-
-<div class="max-w-7xl mx-auto py-6 px-4">
-  <div class="grid grid-cols-12 gap-6">
-
-    <!-- SIDEBAR: col-span 3 -->
-    <aside class="col-span-12 lg:col-span-3">
-      <div class="card p-4 rounded-lg">
-        <div class="flex items-center gap-3">
-          <div id="avatarPreview" class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl">U</div>
-          <div class="flex-1">
-            <div id="profileName" class="font-semibold text-slate-900">Profile</div>
-            <div id="profileToken" class="text-xs text-slate-500"></div>
-          </div>
-
-          <!-- 3-dot menu toggle (reveals features list below) -->
-          <div class="relative">
-            <button id="menuBtn" aria-label="menu" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100">
-              <i data-lucide="more-vertical" class="text-slate-500"></i>
-            </button>
-          </div>
+<div class="w-full min-h-screen flex">
+  <!-- SIDEBAR (fixed width) -->
+  <aside class="w-64 p-5">
+    <div class="card p-4 rounded-lg">
+      <div class="flex items-center gap-3">
+        <div id="avatarPreview" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-lg">U</div>
+        <div class="flex-1">
+          <div id="profileName" class="font-semibold">Profile</div>
+          <div id="profileToken" class="text-xs text-slate-500 truncate">token: ...</div>
         </div>
 
-        <!-- features list (hidden until menu toggled) -->
-        <div id="featuresList" class="mt-4 hidden">
-          <div class="text-xs text-slate-500 mb-2">Features</div>
-          <ul class="space-y-2">
-            <li><button class="w-full text-left px-3 py-2 rounded hover:bg-slate-50 feature-item" data-feature="search">🔎 Token Search</button></li>
-            <li><button class="w-full text-left px-3 py-2 rounded hover:bg-slate-50 feature-item" data-feature="merge">🔀 Token Merge</button></li>
-            <li><button class="w-full text-left px-3 py-2 rounded hover:bg-slate-50 feature-item" data-feature="delete">🗑️ Delete Token</button></li>
-            <li><button class="w-full text-left px-3 py-2 rounded hover:bg-slate-50 feature-item" data-feature="storage">📊 Storage Summary</button></li>
-            <li><button id="logoutBtn" class="w-full text-left px-3 py-2 rounded hover:bg-slate-50">🚪 Log out</button></li>
-          </ul>
-        </div>
-
-        <!-- small footer -->
-        <div class="mt-6 text-xs text-slate-500">Qloud • Token-based anonymous storage</div>
-      </div>
-    </aside>
-
-    <!-- MAIN: File operations only (col-span 6) -->
-    <main class="col-span-12 lg:col-span-6">
-      <div class="card p-6 rounded-lg">
-        <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
-
-        <!-- UPLOAD HERO -->
-        <div id="uploadBox" class="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer bg-white hover:shadow-md transition">
-          <input id="fileInput" type="file" multiple hidden />
-          <div class="text-5xl mb-2">☁️</div>
-          <div class="font-semibold text-slate-900">Click or drag & drop files here</div>
-          <div class="text-sm text-slate-500 mt-1">Files are private to this token</div>
-        </div>
-
-        <!-- PROGRESS -->
-        <div id="progressWrap" class="hidden mt-4">
-          <div class="w-full bg-slate-100 rounded-full h-2">
-            <div id="progressFill" class="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"></div>
-          </div>
-          <div id="statusText" class="text-xs text-slate-500 mt-1"></div>
-        </div>
-
-        <!-- FILE GRID -->
-        <div class="mt-6">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold text-slate-900">Files <span id="count" class="text-sm text-slate-500"></span></h2>
-
-            <!-- small file controls (search within files or layout) optional -->
-            <div class="flex items-center gap-2">
-              <input id="fileSearch" placeholder="Search files..." class="px-3 py-1 rounded border border-slate-100 text-sm hidden" />
-              <!-- keep the middle area minimal as requested -->
-            </div>
-          </div>
-
-          <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+        <!-- 3-dot toggles the side feature list -->
+        <div class="relative">
+          <button id="menuBtn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100">
+            <i data-lucide="more-vertical" class="text-slate-500"></i>
+          </button>
         </div>
       </div>
-    </main>
 
-    <!-- RIGHT: Feature panel (col-span 3) -->
-    <aside class="col-span-12 lg:col-span-3">
-      <div id="featurePanel" class="card p-4 rounded-lg min-h-[380px]">
-        <div id="featureEmpty" class="text-slate-400 text-sm text-center py-16">
-          Select a feature from the left menu to open here.
-        </div>
-        <!-- feature content is rendered here by JS -->
+      <!-- features list: appears below when toggled -->
+      <div id="featuresList" class="mt-4 hidden side-nav">
+        <div class="text-xs text-slate-400 mb-2">Features</div>
+        <ul class="space-y-1">
+          <li><button class="feature-item flex items-center" data-feature="search"><i data-lucide="search" class="w-4 h-4"></i> <span class="ml-2">Token Search</span></button></li>
+          <li><button class="feature-item flex items-center" data-feature="merge"><i data-lucide="shuffle" class="w-4 h-4"></i> <span class="ml-2">Token Merge</span></button></li>
+          <li><button class="feature-item flex items-center" data-feature="delete"><i data-lucide="trash" class="w-4 h-4"></i> <span class="ml-2">Delete Token</span></button></li>
+          <li><button class="feature-item flex items-center" data-feature="storage"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> <span class="ml-2">Storage Summary</span></button></li>
+          <li><button id="logoutBtn" class="flex items-center"><i data-lucide="log-out" class="w-4 h-4"></i> <span class="ml-2">Log out</span></button></li>
+        </ul>
       </div>
-    </aside>
 
-  </div>
+      <div class="mt-4 text-xs text-slate-400">Qloud • Token-based anonymous storage</div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA (file operations only) -->
+  <main class="flex-1 p-6">
+    <div class="card p-6 rounded-lg">
+      <div id="msg" class="hidden p-3 rounded text-sm mb-4"></div>
+
+      <!-- Upload box -->
+      <div id="uploadBox" class="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center bg-white cursor-pointer">
+        <input id="fileInput" type="file" multiple hidden />
+        <div class="text-4xl mb-2">☁️</div>
+        <div class="font-semibold">Click or drag & drop files here</div>
+        <div class="text-sm text-slate-500 mt-1">Files are private to this token</div>
+      </div>
+
+      <!-- progress -->
+      <div id="progressWrap" class="hidden mt-4">
+        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+          <div id="progressFill" class="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"></div>
+        </div>
+        <div id="statusText" class="text-xs text-slate-500 mt-1"></div>
+      </div>
+
+      <!-- files heading -->
+      <div class="mt-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold">Files <span id="count" class="text-sm text-slate-500"></span></h2>
+          <!-- (main area kept minimal intentionally) -->
+        </div>
+
+        <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT FEATURE PANEL (empty until a feature is opened) -->
+  <aside class="w-80 p-5">
+    <div id="featurePanel" class="card p-4 rounded-lg min-h-[420px]">
+      <div id="featureEmpty" class="text-slate-400 text-sm text-center py-16">Select a feature from the left menu to open here.</div>
+    </div>
+  </aside>
 </div>
 
-<!-- Reuse lucide icons -->
 <script>lucide.createIcons()</script>
 
-<!-- ======= App JS (keeps your existing logic but adapted to new IDs) ======= -->
 <script>
-/* =========================
-   CONFIG (unchanged)
-========================= */
+/* ========== Config (unchanged) ========== */
 const CLOUD_NAME = 'dzvz7kzin';
 const UPLOAD_PRESET = 'mycloud_unsigned';
 const BASE_FOLDER = 'mycloud';
 const token = new URLSearchParams(location.search).get('token');
 if (!token) location.href = 'index.html';
+document.getElementById('profileToken').textContent = token ? 'token: ' + token : '';
 
-document.getElementById('profileToken').textContent = 'token: ' + token;
-
-/* =========================
-   UI REFS
-========================= */
+/* ========== UI refs ========== */
 const uploadBox = document.getElementById('uploadBox');
 const fileInput = document.getElementById('fileInput');
 const fileGrid = document.getElementById('fileGrid');
@@ -154,25 +134,22 @@ const featureEmpty = document.getElementById('featureEmpty');
 
 let files = [];
 
-/* =========================
-   HELPERS
-========================= */
+/* ========== Helpers ========== */
 function showMsg(text, type='info'){
   msgEl.textContent = text;
-  msgEl.className =
-    'p-3 rounded mb-4 text-sm ' +
-    (type==='success' ? 'bg-emerald-50 text-emerald-700' :
-     type==='error' ? 'bg-red-50 text-red-700' :
-     'bg-slate-50 text-slate-700');
+  msgEl.className = 'p-3 rounded mb-4 text-sm ' + (type==='success' ? 'bg-emerald-50 text-emerald-700' : type==='error' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700');
   msgEl.classList.remove('hidden');
   setTimeout(()=>msgEl.classList.add('hidden'), 3000);
 }
 
-/* =========================
-   FILE ICONS
-========================= */
-function getFileIcon(publicId) {
-  const ext = publicId.split('.').pop().toLowerCase();
+function debounce(fn, wait=400){
+  let t = null;
+  return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); };
+}
+
+/* ========== File icons and rendering (unchanged behaviour) ========== */
+function getFileIcon(publicId){
+  const ext = (publicId.split('.').pop() || '').toLowerCase();
   if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
   if (['mp4','mkv','avi','mov','webm'].includes(ext)) return 'video';
   if (['mp3','wav','ogg','aac','flac'].includes(ext)) return 'music';
@@ -182,254 +159,175 @@ function getFileIcon(publicId) {
   return 'file';
 }
 
-/* =========================
-   FETCH FILES (same endpoint)
-========================= */
 async function fetchFiles(){
   try {
     const res = await fetch(`/api/list-files?token=${encodeURIComponent(token)}`);
     const data = await res.json();
     files = (data.resources || []).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
     renderFiles();
-  } catch (err) {
-    console.error(err);
-    showMsg('Failed to load files','error');
-  }
+  } catch (err) { console.error(err); showMsg('Failed to load files','error'); }
 }
 
-/* =========================
-   RENDER FILES (UI only)
-========================= */
 function renderFiles(){
   countEl.textContent = `(${files.length})`;
   fileGrid.innerHTML = '';
-
   if (!files.length) {
     fileGrid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-8">No files uploaded yet</div>';
     return;
   }
-
-  files.forEach(f => {
+  files.forEach(f=>{
     const name = f.public_id.split('/').pop();
     const size = (f.bytes / 1024 / 1024).toFixed(2);
     const icon = getFileIcon(f.public_id);
-
     const card = document.createElement('div');
     card.className = 'file-card bg-white rounded-lg p-4 border border-slate-100 hover:shadow transition';
-
     card.innerHTML = `
       <div class="file-actions">
-        <button class="file-action-btn text-emerald-600 download-btn" title="Download">
-          <i data-lucide="download" class="w-4 h-4"></i>
-        </button>
-        <button class="file-action-btn text-red-600 delete-btn" title="Delete">
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
-        </button>
+        <button class="file-action-btn text-emerald-600 download-btn" title="Download"><i data-lucide="download" class="w-4 h-4"></i></button>
+        <button class="file-action-btn text-red-600 delete-btn" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
       </div>
-
-      <div class="text-4xl mb-2 text-indigo-500">
-        <i data-lucide="${icon}"></i>
-      </div>
+      <div class="text-4xl mb-2 text-indigo-500"><i data-lucide="${icon}"></i></div>
       <div class="font-semibold truncate">${name}</div>
       <div class="text-xs text-slate-500 mt-1">${size} MB</div>
     `;
-
-    // DOWNLOAD
-    card.querySelector('.download-btn').onclick = () => forceDownload(f.secure_url, name);
-
-    // DELETE
-    card.querySelector('.delete-btn').onclick = () => deleteFile(f.public_id);
-
+    card.querySelector('.download-btn').onclick = ()=> forceDownload(f.secure_url, name);
+    card.querySelector('.delete-btn').onclick = ()=> deleteFile(f.public_id);
     fileGrid.appendChild(card);
   });
-
   lucide.createIcons();
 }
 
-/* =========================
-   UPLOAD (unchanged logic)
-========================= */
-uploadBox.addEventListener('click', () => fileInput.click());
-
-uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
-uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('ring-2','ring-indigo-200') );
-uploadBox.addEventListener('drop', e => { e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
-
-fileInput.onchange = e => uploadFiles([...e.target.files]);
+/* ========== Upload logic (unchanged) ========== */
+uploadBox.addEventListener('click', ()=> fileInput.click());
+uploadBox.addEventListener('dragover', e=>{ e.preventDefault(); uploadBox.classList.add('ring-2','ring-indigo-200'); });
+uploadBox.addEventListener('dragleave', ()=> uploadBox.classList.remove('ring-2','ring-indigo-200'));
+uploadBox.addEventListener('drop', e=>{ e.preventDefault(); uploadBox.classList.remove('ring-2','ring-indigo-200'); uploadFiles([...e.dataTransfer.files]); });
+fileInput.onchange = e=> uploadFiles([...e.target.files]);
 
 async function uploadFiles(list){
   if (!list.length) return;
   progressWrap.classList.remove('hidden');
-
   for (let i=0;i<list.length;i++){
     const fd = new FormData();
     fd.append('file', list[i]);
     fd.append('upload_preset', UPLOAD_PRESET);
     fd.append('folder', `${BASE_FOLDER}/${token}`);
-
     statusText.textContent = `Uploading ${list[i].name}`;
     progressFill.style.width = ((i+1)/list.length*100)+'%';
-
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method:'POST', body:fd });
-
-    if (!res.ok) {
-      showMsg(`Upload failed: ${list[i].name}`,'error');
-      break;
-    }
+    if (!res.ok){ showMsg(`Upload failed: ${list[i].name}`,'error'); break; }
   }
-
   progressWrap.classList.add('hidden');
   progressFill.style.width = '0%';
   fetchFiles();
 }
 
-/* =========================
-   DELETE
-========================= */
+/* ========== Delete & download (unchanged) ========== */
 async function deleteFile(publicId){
   try {
-    const res = await fetch('/api/delete-file', {
-      method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ public_id: publicId })
-    });
+    const res = await fetch('/api/delete-file', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ public_id: publicId }) });
     if (!res.ok) throw new Error();
     fetchFiles();
     showMsg('File deleted','success');
-  } catch (err) {
-    console.error(err);
-    showMsg('Delete failed','error');
-  }
+  } catch (err) { console.error(err); showMsg('Delete failed','error'); }
 }
 
-/* =========================
-   FORCE DOWNLOAD
-========================= */
-async function forceDownload(url, filename) {
+async function forceDownload(url, filename){
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error();
-    const blob = await res.blob();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
-  } catch (err) {
-    console.error(err);
-    showMsg('Download failed','error');
-  }
+    const res = await fetch(url); if (!res.ok) throw new Error();
+    const blob = await res.blob(); const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+  } catch (err) { console.error(err); showMsg('Download failed','error'); }
 }
 
-/* =========================
-   MENU + FEATURES behavior
-   - click 3-dot toggles featuresList
-   - clicking a feature renders its UI into right panel
-========================= */
-menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); featuresList.classList.toggle('hidden'); });
-
-// close features list if click outside
+/* ========== Menu toggle behavior (open/close & outside click) ========== */
+menuBtn.addEventListener('click', e=>{ e.stopPropagation(); featuresList.classList.toggle('hidden'); });
 document.addEventListener('click', ()=> featuresList.classList.add('hidden'));
 
-document.querySelectorAll('.feature-item').forEach(btn=>{
-  btn.addEventListener('click', (ev)=>{
-    const f = ev.currentTarget.dataset.feature;
-    openFeaturePanel(f);
-  });
-});
+/* ========== Feature selection & panel rendering ========== */
+document.querySelectorAll('.feature-item').forEach(btn=> btn.addEventListener('click', e=> {
+  const f = btn.dataset.feature;
+  openFeaturePanel(f);
+}));
 
-// logout
 document.getElementById('logoutBtn').addEventListener('click', ()=> location.href='index.html');
 
-/* =========================
-   Feature Panel renderers
-========================= */
-
-function clearFeaturePanel(){
-  featurePanel.innerHTML = '';
-}
-
-function setFeatureEmpty(){
-  clearFeaturePanel();
-  featurePanel.appendChild(featureEmpty);
-}
+function clearFeaturePanel(){ featurePanel.innerHTML = ''; }
+function setFeatureEmpty(){ clearFeaturePanel(); featurePanel.appendChild(featureEmpty); }
 
 function openFeaturePanel(feature){
-  featuresList.classList.add('hidden'); // hide menu after selection
+  featuresList.classList.add('hidden');
   clearFeaturePanel();
+  if (feature === 'search') renderTokenSearch();
+  else if (feature === 'merge') renderTokenMerge();
+  else if (feature === 'delete') renderDeleteToken();
+  else if (feature === 'storage') renderStorageSummary();
+  else setFeatureEmpty();
+}
 
-  if (feature === 'search'){
-    renderTokenSearch();
-  } else if (feature === 'merge'){
-    renderTokenMerge();
-  } else if (feature === 'delete'){
-    renderDeleteToken();
-  } else if (feature === 'storage'){
-    renderStorageSummary();
-  } else {
-    setFeatureEmpty();
+/* ========== Token search (auto search while typing) ========== */
+function appendSearchResultItem(container, t, withAdd){
+  const row = document.createElement('div');
+  row.className = 'flex items-center justify-between p-2 border border-slate-100 rounded';
+  row.innerHTML = `<div class="truncate">${t.id}${t.name ? ' — ' + t.name : ''}</div>
+                   <div class="flex gap-2">
+                     <button class="px-2 py-1 text-sm rounded bg-indigo-600 text-white open-token" data-token="${t.id}">Open</button>
+                     ${withAdd ? `<button class="px-2 py-1 text-sm rounded bg-indigo-100 text-indigo-700 add-token" data-token="${t.id}">Add</button>` : ''}
+                   </div>`;
+  container.appendChild(row);
+  const openBtn = row.querySelector('.open-token'); openBtn.onclick = ()=> location.search = '?token=' + encodeURIComponent(openBtn.dataset.token);
+  if (withAdd) {
+    row.querySelector('.add-token').onclick = ()=> {
+      // custom event or store in merge UI - we'll dispatch a window event
+      window.dispatchEvent(new CustomEvent('qloud-add-source', { detail: { id: row.querySelector('.add-token').dataset.token } }));
+      showMsg('Added to selection (merge panel may pick it)','info');
+    };
   }
 }
 
-/* -------------- Token Search UI -------------- */
+async function doTokenSearch(q, resultsContainer, withAdd=true){
+  if (!q) { resultsContainer.innerHTML = '<div class="text-sm text-slate-500">Type to search tokens</div>'; return; }
+  resultsContainer.innerHTML = '<div class="text-sm text-slate-500">Searching...</div>';
+  try {
+    const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    const hits = data.tokens || [];
+    if (!hits.length) { resultsContainer.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
+    resultsContainer.innerHTML = '';
+    hits.forEach(t => appendSearchResultItem(resultsContainer, t, withAdd));
+  } catch (e) {
+    console.error(e); resultsContainer.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
+  }
+}
+const doTokenSearchDebounced = debounce(doTokenSearch, 400);
+
+/* ========== Feature renderers ========== */
 function renderTokenSearch(){
   const container = document.createElement('div');
   container.innerHTML = `
-    <h3 class="font-semibold text-slate-900 mb-2">Token Search</h3>
-    <div class="text-sm text-slate-500 mb-3">Search existing tokens by id</div>
-    <div class="flex gap-2 mb-3">
-      <input id="fpSearchInput" class="flex-1 p-2 border border-slate-100 rounded" placeholder="Search tokens..." />
-      <button id="fpSearchBtn" class="px-3 py-2 bg-indigo-600 text-white rounded">Search</button>
-    </div>
+    <h3 class="font-semibold mb-2">Token Search</h3>
+    <div class="text-sm text-slate-500 mb-3">Search tokens by id. Results update while typing.</div>
+    <div class="mb-3"><input id="fpSearchInput" class="w-full p-2 border border-slate-100 rounded" placeholder="Search tokens..."></div>
     <div id="fpSearchResults" class="space-y-2"></div>
   `;
   featurePanel.appendChild(container);
-
-  document.getElementById('fpSearchBtn').addEventListener('click', async ()=>{
-    const q = document.getElementById('fpSearchInput').value.trim();
-    const results = document.getElementById('fpSearchResults');
-    results.innerHTML = 'Searching...';
-    try {
-      const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      const hits = data.tokens || [];
-      if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
-      results.innerHTML = '';
-      hits.forEach(t => {
-        const row = document.createElement('div');
-        row.className = 'flex items-center justify-between p-2 border border-slate-100 rounded';
-        row.innerHTML = `<div class="truncate">${t.id}${t.name ? ' — '+t.name : ''}</div>
-                         <div class="flex gap-2">
-                           <button class="px-2 py-1 text-sm rounded bg-indigo-100 text-indigo-700 copy-token" data-token="${t.id}">Open</button>
-                         </div>`;
-        results.appendChild(row);
-      });
-      // attach open handlers
-      results.querySelectorAll('.copy-token').forEach(b=>{
-        b.onclick = ()=> {
-          const t = b.dataset.token;
-          // open token (navigate)
-          location.search = '?token=' + encodeURIComponent(t);
-        };
-      });
-    } catch (e) {
-      console.error(e);
-      results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>';
-    }
+  const input = document.getElementById('fpSearchInput');
+  const results = document.getElementById('fpSearchResults');
+  results.innerHTML = '<div class="text-sm text-slate-500">Type to search tokens</div>';
+  input.addEventListener('input', ()=> doTokenSearchDebounced(input.value, results, true));
+  // support programmatic add (from search elsewhere)
+  window.addEventListener('qloud-add-source', (ev)=> {
+    // show a toast; actual merge panel holds selected list
+    showMsg('Source token selected: ' + ev.detail.id, 'info');
   });
 }
 
-/* -------------- Token Merge UI -------------- */
 function renderTokenMerge(){
   const container = document.createElement('div');
   container.innerHTML = `
-    <h3 class="font-semibold text-slate-900 mb-2">Merge tokens</h3>
+    <h3 class="font-semibold mb-2">Merge tokens</h3>
     <div class="text-sm text-slate-500 mb-3">Destination: <strong>${token}</strong></div>
-    <div class="mb-2"><input id="fpMergeSearch" class="w-full p-2 border border-slate-100 rounded" placeholder="Search tokens to add as sources"/></div>
-    <div class="flex gap-2 mb-3">
-      <button id="fpMergeSearchBtn" class="px-3 py-2 bg-indigo-600 text-white rounded">Search</button>
-      <button id="fpAddSourceBtn" class="px-3 py-2 bg-indigo-100 text-indigo-700 rounded">Add Selected</button>
-    </div>
+    <div class="mb-2"><input id="fpMergeSearch" class="w-full p-2 border border-slate-100 rounded" placeholder="Search tokens to add as sources (typing searches)"/></div>
     <div id="fpMergeResults" class="space-y-2 mb-3"></div>
     <div class="text-xs text-slate-500 mb-2">Selected sources</div>
     <div id="fpSelectedSources" class="space-y-2 mb-3"></div>
@@ -437,125 +335,108 @@ function renderTokenMerge(){
       <label class="text-xs text-slate-500">Type <strong>MERGE</strong> to confirm</label>
       <input id="fpMergeConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type MERGE"/>
     </div>
-    <div class="flex justify-end gap-2">
-      <button id="fpStartMerge" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Merge now</button>
-    </div>
+    <div class="flex justify-end gap-2"><button id="fpStartMerge" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Merge now</button></div>
     <div id="fpMergeStatus" class="text-sm text-slate-500 mt-3"></div>
   `;
   featurePanel.appendChild(container);
 
+  const results = document.getElementById('fpMergeResults');
+  const selectedEl = document.getElementById('fpSelectedSources');
+  const input = document.getElementById('fpMergeSearch');
+  const confirm = document.getElementById('fpMergeConfirm');
+  const startBtn = document.getElementById('fpStartMerge');
+  const status = document.getElementById('fpMergeStatus');
+
   let selected = [];
 
-  async function doSearch(query){
-    const results = document.getElementById('fpMergeResults');
-    results.innerHTML = 'Searching...';
-    try {
-      const res = await fetch(`/api/search-tokens?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      const hits = data.tokens || [];
-      if (!hits.length) { results.innerHTML = '<div class="text-sm text-slate-500">No tokens found</div>'; return; }
-      results.innerHTML = '';
-      hits.forEach(t=>{
-        const r = document.createElement('div');
-        r.className = 'flex items-center justify-between p-2 border border-slate-100 rounded';
-        r.innerHTML = `<div class="truncate">${t.id}${t.name ? ' — '+t.name : ''}</div>
-                       <button class="px-2 py-1 rounded bg-indigo-100 text-indigo-700 add-source" data-id="${t.id}">Add</button>`;
-        results.appendChild(r);
-      });
-      // hook add
-      results.querySelectorAll('.add-source').forEach(btn=>{
-        btn.onclick = ()=> {
-          const id = btn.dataset.id;
-          if (id === token) { showMsg('Cannot add current token','error'); return; }
-          if (selected.includes(id)) { showMsg('Already added','info'); return; }
-          selected.push(id); renderSelected();
-        };
-      });
-    } catch (e) { console.error(e); results.innerHTML = '<div class="text-sm text-red-500">Search failed</div>'; }
-  }
-
   function renderSelected(){
-    const el = document.getElementById('fpSelectedSources');
-    el.innerHTML = '';
-    if (!selected.length) el.innerHTML = '<div class="text-sm text-slate-500">No sources selected</div>';
+    selectedEl.innerHTML = '';
+    if (!selected.length) selectedEl.innerHTML = '<div class="text-sm text-slate-500">No sources selected</div>';
     selected.forEach(s=>{
-      const row = document.createElement('div'); row.className='flex items-center justify-between p-2 border border-slate-100 rounded';
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between p-2 border border-slate-100 rounded';
       row.innerHTML = `<div class="truncate">${s}</div><button class="px-2 py-1 rounded bg-red-100 text-red-700 remove-source" data-id="${s}">Remove</button>`;
-      el.appendChild(row);
+      selectedEl.appendChild(row);
+      row.querySelector('.remove-source').onclick = ()=> { selected = selected.filter(x=>x!==s); renderSelected(); updateStartBtn(); };
     });
-    el.querySelectorAll('.remove-source').forEach(b=> b.onclick = ()=> { selected = selected.filter(x=>x!==b.dataset.id); renderSelected(); });
-    updateMergeButton();
   }
 
-  function updateMergeButton(){
-    const confirmVal = document.getElementById('fpMergeConfirm').value.trim();
-    const btn = document.getElementById('fpStartMerge');
-    if (confirmVal === 'MERGE' && selected.length > 0) { btn.disabled = false; btn.classList.remove('opacity-60'); }
-    else { btn.disabled = true; btn.classList.add('opacity-60'); }
+  function updateStartBtn(){
+    if (confirm.value.trim() === 'MERGE' && selected.length>0) { startBtn.disabled = false; startBtn.classList.remove('opacity-60'); }
+    else { startBtn.disabled = true; startBtn.classList.add('opacity-60'); }
   }
 
-  document.getElementById('fpMergeSearchBtn').addEventListener('click', ()=>{
-    const q = document.getElementById('fpMergeSearch').value.trim();
-    doSearch(q);
+  // auto-search while typing
+  input.addEventListener('input', ()=> doTokenSearchDebounced(input.value, results, false /* no Add here because we add via button */));
+
+  // When search results are appended, they include "Add" buttons (see appendSearchResultItem logic)
+  // We listen for clicks on dynamic "Add" buttons via event delegation:
+  results.addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('.add-token');
+    if (!btn) return;
+    const id = btn.dataset.token;
+    if (id === token) { showMsg('Cannot add current token','error'); return; }
+    if (selected.includes(id)) { showMsg('Already added','info'); return; }
+    selected.push(id);
+    renderSelected();
+    updateStartBtn();
   });
-  document.getElementById('fpMergeConfirm').addEventListener('input', updateMergeButton);
 
-  document.getElementById('fpStartMerge').addEventListener('click', async ()=>{
-    if (!confirm('Merge selected tokens into this token? This will delete source tokens after move.')) return;
-    const st = document.getElementById('fpMergeStatus');
-    st.textContent = 'Merging...';
+  // also allow global additions from other places
+  window.addEventListener('qloud-add-source', (ev)=> {
+    const id = ev.detail.id;
+    if (!selected.includes(id) && id !== token) { selected.push(id); renderSelected(); updateStartBtn(); }
+  });
+
+  confirm.addEventListener('input', updateStartBtn);
+
+  startBtn.addEventListener('click', async ()=>{
+    if (!confirm('Merge selected tokens into this token?')) return;
+    status.textContent = 'Merging...';
     try {
-      const res = await fetch('/api/merge-tokens', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dest: token, sources: selected }) });
+      const res = await fetch('/api/merge-tokens', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dest: token, sources: selected })});
       if (!res.ok) throw new Error(await res.text());
-      st.textContent = 'Merge successful';
+      status.textContent = 'Merge successful';
       showMsg('Merge successful','success');
       fetchFiles();
-    } catch (e) { console.error(e); st.textContent = 'Merge failed'; showMsg('Merge failed','error'); }
+      selected = []; renderSelected(); updateStartBtn();
+    } catch (e) { console.error(e); status.textContent = 'Merge failed'; showMsg('Merge failed','error'); }
   });
+
+  // initial state
+  results.innerHTML = '<div class="text-sm text-slate-500">Type to search tokens</div>';
+  selectedEl.innerHTML = '<div class="text-sm text-slate-500">No sources selected</div>';
 }
 
-/* -------------- Delete Token UI -------------- */
+/* ========== Delete token UI ========== */
 function renderDeleteToken(){
   const container = document.createElement('div');
   container.innerHTML = `
-    <h3 class="font-semibold text-slate-900 mb-2">Delete token</h3>
-    <div class="text-sm text-slate-500 mb-4">This will permanently delete the token <strong>${token}</strong> and all files inside.</div>
+    <h3 class="font-semibold mb-2">Delete token</h3>
+    <div class="text-sm text-slate-500 mb-4">This will permanently delete token <strong>${token}</strong> and all files inside.</div>
     <div class="mb-3"><label class="text-xs text-slate-500">Type <strong>DELETE</strong> to enable</label>
     <input id="fpDeleteConfirm" class="w-full p-2 border border-slate-100 rounded mt-1" placeholder="Type DELETE"/></div>
-    <div class="flex justify-end">
-      <button id="fpDoDelete" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Delete token</button>
-    </div>
+    <div class="flex justify-end"><button id="fpDoDelete" class="px-4 py-2 bg-red-600 text-white rounded opacity-60" disabled>Delete token</button></div>
     <div id="fpDeleteStatus" class="text-sm text-slate-500 mt-3"></div>
   `;
   featurePanel.appendChild(container);
-
-  const input = document.getElementById('fpDeleteConfirm');
-  const btn = document.getElementById('fpDoDelete');
-  input.addEventListener('input', ()=> {
-    if (input.value.trim() === 'DELETE') { btn.disabled = false; btn.classList.remove('opacity-60'); }
-    else { btn.disabled = true; btn.classList.add('opacity-60'); }
-  });
-
+  const input = document.getElementById('fpDeleteConfirm'), btn = document.getElementById('fpDoDelete'), status = document.getElementById('fpDeleteStatus');
+  input.addEventListener('input', ()=> { if (input.value.trim() === 'DELETE') { btn.disabled = false; btn.classList.remove('opacity-60'); } else { btn.disabled = true; btn.classList.add('opacity-60'); } });
   btn.addEventListener('click', async ()=>{
-    if (!confirm('Really delete token and all files? This is irreversible.')) return;
+    if (!confirm('Really delete token and all files?')) return;
     try {
       const res = await fetch('/api/delete-token', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token }) });
       if (!res.ok) throw new Error(await res.text());
-      showMsg('Token deleted','success');
-      location.href = 'index.html';
-    } catch (e) { console.error(e); showMsg('Delete failed','error'); }
+      showMsg('Token deleted','success'); location.href = 'index.html';
+    } catch (e) { console.error(e); showMsg('Delete failed','error'); status.textContent = 'Delete failed'; }
   });
 }
 
-/* -------------- Storage Summary UI -------------- */
+/* ========== Storage summary UI ========== */
 async function renderStorageSummary(){
   const container = document.createElement('div');
-  container.innerHTML = `
-    <h3 class="font-semibold text-slate-900 mb-2">Storage summary</h3>
-    <div id="fpStorageContent" class="text-sm text-slate-500">Loading...</div>
-  `;
+  container.innerHTML = `<h3 class="font-semibold mb-2">Storage summary</h3><div id="fpStorageContent" class="text-sm text-slate-500">Loading...</div>`;
   featurePanel.appendChild(container);
-
   try {
     const res = await fetch('/api/storage-summary');
     if (!res.ok) throw new Error('storage fetch failed');
@@ -570,11 +451,8 @@ async function renderStorageSummary(){
   } catch (e) { console.error(e); document.getElementById('fpStorageContent').textContent = 'Failed to load'; }
 }
 
-/* =========================
-   INIT
-========================= */
+/* ========== Init ========== */
 fetchFiles();
 </script>
-
 </body>
 </html>
