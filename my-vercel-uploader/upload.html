@@ -95,6 +95,35 @@
     .app{ margin-left:calc(var(--sidebar-collapsed-w) + var(--gap)); padding:16px; }
     .feature-panel{ display:none !important; }
   }
+
+/* storage visibility */
+.storage-expanded {
+  display: block;
+}
+
+.storage-collapsed {
+  display: none;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+/* when sidebar collapses */
+.sidebar.collapsed .storage-expanded {
+  display: none;
+}
+
+.sidebar.collapsed .storage-collapsed {
+  display: flex;
+}
+
+/* prevent dragging / sliding */
+.storage-bar,
+.storage-fill {
+  pointer-events: none;
+  user-select: none;
+}
+
+  
 </style>
 </head>
 <body>
@@ -138,23 +167,22 @@
     </div>
   </nav>
 
-  <div class="sidebar-footer">
-
-  <!-- ICON (always visible) -->
-  <div class="storage-icon">
-    <i data-lucide="cloud"></i>
-  </div>
-
-  <!-- TEXT + BAR (HIDDEN WHEN COLLAPSED) -->
-  <div class="storage-details">
-    <div id="storageText" class="storage-text">Loading…</div>
-
+<div class="sidebar-footer">
+  <div class="storage-expanded label">
+    <div class="text-xs text-slate-500 mb-1">Global storage usage</div>
     <div class="storage-bar">
       <div id="storageFill" class="storage-fill"></div>
     </div>
+    <div id="storageText" class="text-xs text-slate-500 mt-1">
+      Loading…
+    </div>
   </div>
 
+  <div class="storage-collapsed">
+    <i data-lucide="cloud" class="w-5 h-5 text-slate-500"></i>
+  </div>
 </div>
+
 
 
   <div class="logout-row">
