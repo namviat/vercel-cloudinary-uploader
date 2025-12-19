@@ -90,7 +90,12 @@
   .tooltip-floater{ position:fixed; background:#0f172a; color:#fff; padding:8px 10px; border-radius:8px; font-size:13px; pointer-events:none; transform-origin:left center; opacity:0; transition:opacity .14s, transform .14s; z-index:9999; box-shadow:0 8px 20px rgba(2,6,23,0.18); white-space:nowrap; }
 
   /* storage footer */
-  .sidebar-footer{ padding:12px; border-top:1px solid rgba(2,6,23,0.03); display:flex; flex-direction:column; gap:8px; }
+.sidebar-footer { 
+  padding: 12px; 
+  border-top: 1px solid rgba(2,6,23,0.03); 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; }  
   .storage-top{ display:flex; align-items:center; gap:8px; justify-content:space-between; }
   .storage-icon{ width:20px; height:20px; color:#475569; display:inline-flex; align-items:center; justify-content:center; }
   .storage-text{ font-size:12px; color:#64748b; }
@@ -99,15 +104,19 @@
   .storage-fill{ height:100%; width:0%; background:linear-gradient(90deg,#6366f1,#06b6d4); transition:width .6s cubic-bezier(.2,.9,.2,1); }
 
   /* Collapsed / expanded storage UI */
-  .storage-expanded { display:block; }
-.storage-collapsed {
-  display: none;
-  justify-content: center;
-  align-items: center;
-  padding: 12px 0;
+ .storage-expanded { width: 100%; }
+
+.storage-collapsed { 
+  display: none; 
   width: 100%;
-}  .sidebar.collapsed .storage-expanded { display:none; }
-  .sidebar.collapsed .storage-collapsed { display:flex; }
+  justify-content: center; 
+  align-items: center;
+  padding: 8px 0;
+}
+
+.sidebar.collapsed .storage-collapsed { 
+  display: flex; 
+}
 
   /* logout */
   .logout-row{ padding:10px 12px; }
@@ -208,9 +217,9 @@
       <div id="storageText" class="text-xs text-slate-500 mt-1">Loading…</div>
     </div>
 
-    <div class="storage-collapsed">
-      <i data-lucide="cloud" class="w-5 h-5 text-slate-500"></i>
-    </div>
+   <div class="storage-collapsed">
+  <i data-lucide="cloud" class="w-6 h-6 text-slate-400"></i>
+</div>
   </div>
 
   <div class="logout-row">
