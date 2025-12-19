@@ -392,7 +392,7 @@ async function forceDownload(url, filename){
 /* =========================
    STORAGE SUMMARY (always visible)
    Uses /api/storage-summary (server file present). :contentReference[oaicite:3]{index=3}
-   Refreshes on load and every 60s.
+   Refreshes on load and every 60s. */
 async function refreshStorageSummary() {
   try {
     const res = await fetch('/api/storage-summary');
