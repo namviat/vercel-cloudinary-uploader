@@ -755,7 +755,11 @@ function renderDeleteFeature(){
       span.id='profileName'; span.className='profile-name'; span.textContent = final;
       input.replaceWith(span);
       if (save && final !== current) {
-        fetch('/api/save-profile', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token, name: final }) })
+fetch('/api/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token, name: final })
+})
           .then(r=> { if (r.ok) showMsg('Profile saved','success'); else showMsg('Save failed','error'); })
           .catch(e=> { console.error(e); showMsg('Save failed','error'); });
       }
