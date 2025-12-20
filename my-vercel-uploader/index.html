@@ -3,98 +3,73 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Qloud • Token-based Cloud Storage</title>
+<title>Cloud Storage Portal</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
   body {
-    background: radial-gradient(circle at top, #0b1020, #020409);
+    background-color: #f8fafc;
     font-family: 'Inter', system-ui, sans-serif;
-    color: #e5edff;
+    color: #1e293b;
   }
 
-  .glass {
-    backdrop-filter: blur(10px);
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
+  .card-glass {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
   }
 
-  .meter {
-    height: 14px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 999px;
-    overflow: hidden;
+  .primary-btn {
+    background: #6366f1;
+    color: #ffffff;
+    transition: background 0.2s;
   }
 
-  .meter > span {
-    display: block;
-    height: 100%;
-    background: linear-gradient(90deg, #7c3aed, #22d3ee);
-    transition: width 0.6s ease;
+  .primary-btn:hover {
+    background: #4f46e5;
   }
 
-  .neon-btn {
-    background: linear-gradient(90deg, #7c3aed, #22d3ee);
-    color: #020409;
-  }
-
-  .neon-btn:hover {
-    filter: brightness(1.1);
+  /* Custom Alert Replacement UI */
+  #msgBox {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    display: none;
+    z-index: 100;
+    font-weight: 500;
   }
 </style>
 </head>
 
 <body class="min-h-screen flex items-center justify-center p-6">
 
-<div class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div id="msgBox"></div>
 
-  <!-- LEFT PANEL -->
-  <div class="glass p-6 relative overflow-hidden">
-    <h1 class="text-3xl font-extrabold tracking-wide">☁️ Qloud</h1>
-    <p class="text-sm opacity-80 mt-1">
-      Token-based cloud storage — no login, no password.
+<div class="max-w-md w-full">
+
+  <!-- MAIN INTERACTION PANEL -->
+  <div class="card-glass p-8">
+    <h2 class="text-2xl font-bold text-slate-900 mb-2 text-center">Enter your token</h2>
+    <p class="text-sm text-slate-500 mb-8 text-center">
+If the token exists, you’ll enter it. If not, it will be created automatically.
+
     </p>
 
-    <div class="mt-8 glass p-4">
-      <div class="flex justify-between items-center mb-2">
-        <div class="text-sm opacity-80">Global storage usage</div>
-        <div id="storageText" class="text-sm font-semibold">Loading…</div>
-      </div>
-
-      <div class="meter">
-        <span id="storageFill" style="width:0%"></span>
-      </div>
-
-      <div class="flex justify-between items-center mt-3">
-        <div class="text-sm opacity-80">Total tokens created</div>
-        <div id="tokenCount" class="font-semibold">—</div>
-      </div>
-    </div>
-
-    <div class="mt-6 text-xs opacity-60">
-      Storage is shared globally. Each token maps to its own Cloudinary folder.
-    </div>
-  </div>
-
-  <!-- RIGHT PANEL -->
-  <div class="glass p-6">
-    <h2 class="text-xl font-bold mb-2">Enter your token</h2>
-    <p class="text-sm opacity-80 mb-4">
-      If the token exists, you’ll enter it.  
-      If not, it will be created automatically.
-    </p>
-
-    <div class="flex gap-3">
+    <div class="flex flex-col gap-3">
       <input
         id="tokenInput"
+        type="text"
         placeholder="paste or create token"
-        class="flex-1 px-4 py-3 rounded-lg bg-transparent border border-white/10 outline-none"
+        class="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center font-mono"
       />
       <button
         id="openBtn"
-        class="px-4 py-3 rounded-lg font-semibold neon-btn"
+        class="w-full py-3 rounded-lg font-semibold primary-btn shadow-sm"
       >
         Open
       </button>
@@ -102,61 +77,30 @@
 
     <button
       id="createBtn"
-      class="w-full mt-3 py-2 rounded-lg border border-white/10 hover:bg-white/5"
+      class="w-full mt-4 py-3 rounded-lg border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
     >
       Create new token
     </button>
 
-    <div class="mt-6 text-xs opacity-60">
-      Tokens act like accounts. Share carefully.
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div class="col-span-full glass p-3 text-xs flex justify-between opacity-70">
-    <span>Powered by Cloudinary</span>
-    <span>Deploy: GitHub → Vercel</span>
+    
   </div>
 
 </div>
 
 <script>
 /* ================================
-   STORAGE + TOKEN SUMMARY
+   UI HELPERS
 ================================ */
-
-async function loadSummary() {
-  try {
-    const res = await fetch('/api/storage-summary');
-    const data = await res.json();
-
-    const percent = Math.min(100, (data.totalBytes / data.limitBytes) * 100);
-    const usedText = formatSize(data.totalBytes);
-    const limitText = formatSize(data.limitBytes);
-
-    document.getElementById('storageText').textContent =
-  `${usedText} / ${limitText}`;
-    document.getElementById('storageFill').style.width = percent + '%';
-   
-
-    document.getElementById('tokenCount').textContent =
-      data.tokensCount ?? '—';
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById('storageText').textContent = 'Error';
-  }
-}
-
-function formatSize(bytes) {
-  const gb = bytes / (1024 * 1024 * 1024);
-  if (gb >= 1) return gb.toFixed(2) + ' GB';
-  const mb = bytes / (1024 * 1024);
-  return mb.toFixed(2) + ' MB';
-}
-
+function showMsg(text, type = 'error') {
+  const box = document.getElementById('msgBox');
+  box.textContent = text;
+  box.style.display = 'block';
+  box.style.background = type === 'error' ? '#fee2e2' : '#dcfce7';
+  box.style.color = type === 'error' ? '#991b1b' : '#166534';
+  box.style.border = `1px solid ${type === 'error' ? '#fecaca' : '#bbf7d0'}`;
   
-loadSummary();
+  setTimeout(() => { box.style.display = 'none'; }, 3000);
+}
 
 /* ================================
    TOKEN HANDLING
@@ -174,24 +118,19 @@ async function ensureToken(token) {
   });
 
   const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.error || 'Token API error');
-  }
-
+  if (!res.ok) throw new Error(data.error || 'Token API error');
   return data;
 }
 
-
 openBtn.onclick = async () => {
   const token = tokenInput.value.trim();
-  if (!token) return alert('Enter a token');
+  if (!token) return showMsg('Please enter a token');
 
   try {
     await ensureToken(token);
     window.location.href = `/upload.html?token=${encodeURIComponent(token)}`;
   } catch (e) {
-    alert('Failed to open token');
+    showMsg('Failed to verify token');
   }
 };
 
@@ -201,9 +140,9 @@ createBtn.onclick = async () => {
 
   try {
     await ensureToken(token);
-    loadSummary();
+    showMsg('Token created successfully', 'success');
   } catch (e) {
-    alert('Failed to create token');
+    showMsg('Failed to create new token');
   }
 };
 </script>
