@@ -8,150 +8,288 @@
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
+  @import url("https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700&display=swap");
+
   body {
-    background-color: #f8fafc;
-    font-family: 'Inter', system-ui, sans-serif;
-    color: #1e293b;
+    background-color: #f1f5f9;
+    font-family: "Poppins", sans-serif;
+    color: #0f172a;
+    min-height: 100vh;
+    margin: 0;
+    overflow-x: hidden;
   }
 
-  .card-glass {
+  /* Fixed wrapper for top-right positioning */
+  .box-wrapper {
+    position: fixed;
+    top: 32px;
+    right: 32px;
+    z-index: 1000;
+  }
+
+  /* Container for the animated box */
+  .box {
+    position: relative;
+    width: 220px; 
+    height: 60px;  
     background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    border-radius: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 
+      width 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+      height 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+      box-shadow 0.5s ease,
+      border-radius 0.5s ease,
+      border-color 0.3s ease;
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  /* Expanded state - Height adjusted to fit content exactly */
+  .box:hover {
+    width: 420px;
+    height: 330px; 
+    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.12);
+    border-radius: 24px;
+    border-color: #cbd5e1;
+    cursor: default;
+  }
+
+  /* Initial state text */
+  .initial-text {
+    position: absolute;
+    z-index: 1001;
+    color: #475569;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 24px;
+  }
+
+  .box:hover .initial-text {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  /* Faster Instructional Sequence */
+  .mouse-guide {
+    position: absolute;
+    left: -30px;
+    z-index: 1002;
+    color: #6366f1;
+    opacity: 0;
+    pointer-events: none;
+    animation: guideSequence 3.5s infinite ease-in-out;
+  }
+
+  .mouse-guide::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 50%;
+    transform: scale(0);
+    opacity: 0;
+    animation: clickRipple 3.5s infinite ease-in-out;
+  }
+
+  .box:hover .mouse-guide {
+    opacity: 0 !important;
+    animation: none;
+  }
+
+  @keyframes guideSequence {
+    0% { left: 10px; opacity: 0; transform: scale(1); }
+    10% { opacity: 1; }
+    35% { left: 40px; opacity: 1; transform: scale(1); }
+    45% { transform: scale(0.8); }
+    50% { transform: scale(1.1); }
+    55% { transform: scale(1); }
+    85% { left: 40px; opacity: 1; }
+    100% { left: 60px; opacity: 0; }
+  }
+
+  @keyframes clickRipple {
+    0%, 45% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.5); opacity: 0.6; }
+    65% { transform: scale(2.5); opacity: 0; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+  
+  /* Form Content Styling - Reduced padding to fit exactly */
+  .login-container {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 1.5rem 2rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    transition-delay: 0.05s;
+  }
+
+  .box:hover .login-container {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  .loginBx {
+    width: 100%;
+    transform: translateY(15px);
+    filter: blur(4px);
+    transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), filter 0.5s ease;
+  }
+  
+  .box:hover .loginBx {
+    transform: translateY(0);
+    filter: blur(0);
   }
 
   .primary-btn {
-    background: #6366f1;
+    background: #4f46e5;
     color: #ffffff;
-    transition: background 0.2s;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .primary-btn:hover {
-    background: #4f46e5;
+    background: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
   }
 
-  /* Custom Alert Replacement UI */
   #msgBox {
     position: fixed;
-    top: 20px;
+    top: 24px;
     left: 50%;
     transform: translateX(-50%);
-    padding: 12px 24px;
-    border-radius: 8px;
+    padding: 14px 28px;
+    border-radius: 12px;
     display: none;
-    z-index: 100;
+    z-index: 2000;
     font-weight: 500;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    animation: fadeInDown 0.3s ease;
+  }
+
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translate(-50%, -15px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  .token-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+  }
+
+  .token-desc {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
   }
 </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center p-6">
+<body>
 
 <div id="msgBox"></div>
 
-<div class="max-w-md w-full">
+<div class="box-wrapper">
+  <div class="box">
+    <!-- Faster Enhanced Mouse Guide -->
+    <div class="mouse-guide">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+        <path d="m13 13 6 6"></path>
+      </svg>
+    </div>
 
-  <!-- MAIN INTERACTION PANEL -->
-  <div class="card-glass p-8">
-    <h2 class="text-2xl font-bold text-slate-900 mb-2 text-center">Enter your token</h2>
-    <p class="text-sm text-slate-500 mb-8 text-center">
-      If the token exists, you’ll enter it. If not, it will be created automatically.
-    </p>
+    <!-- Initial hint text -->
+    <h2 class="initial-text">Portal Login</h2>
 
-    <div class="flex flex-col gap-3">
-      <div class="flex gap-2">
-        <input
-          id="tokenInput"
-          type="text"
-          placeholder="paste or create token"
-          class="flex-1 px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono"
-        />
-        <button
-          id="openBtn"
-          class="px-6 py-3 rounded-lg font-semibold primary-btn shadow-sm"
-        >
-          Open
-        </button>
+    <!-- MAIN INTERACTION PANEL -->
+    <div class="login-container">
+      <div class="loginBx">
+        <h2 class="token-title text-center">Enter Token</h2>
+        <p class="token-desc text-center">
+          Secure access to your cloud storage. Existing tokens will be loaded, new ones registered.
+        </p>
+
+        <div class="flex flex-col gap-3">
+          <div class="flex gap-2">
+            <input
+              id="tokenInput"
+              type="text"
+              placeholder="Enter access token"
+              class="flex-1 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm"
+            />
+            <button
+              id="openBtn"
+              class="px-5 py-3 rounded-xl font-bold primary-btn text-xs uppercase tracking-wide"
+            >
+              Open
+            </button>
+          </div>
+
+          <button
+            id="createBtn"
+            class="w-full py-3 rounded-xl border-2 border-slate-100 text-slate-500 font-semibold hover:bg-slate-50 transition-all text-xs"
+          >
+            Generate New Token
+          </button>
+        </div>
       </div>
-
-      <button
-        id="createBtn"
-        class="w-full py-3 rounded-lg border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
-      >
-        Create new token
-      </button>
     </div>
   </div>
-
 </div>
 
 <script>
-/* ================================
-   UI HELPERS
-================================ */
 function showMsg(text, type = 'error') {
   const box = document.getElementById('msgBox');
   box.textContent = text;
   box.style.display = 'block';
-  box.style.background = type === 'error' ? '#fee2e2' : '#dcfce7';
-  box.style.color = type === 'error' ? '#991b1b' : '#166534';
-  box.style.border = `1px solid ${type === 'error' ? '#fecaca' : '#bbf7d0'}`;
+  box.style.background = type === 'error' ? '#fff1f2' : '#f0fdf4';
+  box.style.color = type === 'error' ? '#be123c' : '#15803d';
+  box.style.border = `1px solid ${type === 'error' ? '#fecdd3' : '#bbf7d0'}`;
   
-  setTimeout(() => { box.style.display = 'none'; }, 3000);
+  setTimeout(() => { 
+    box.style.opacity = '0';
+    setTimeout(() => {
+      box.style.display = 'none';
+      box.style.opacity = '1';
+    }, 300);
+  }, 3500);
 }
 
-/* ================================
-   INFINITE ANIME NAME GENERATOR
-================================ */
-
-const prefixes = [
-  "Shadow", "Crimson", "Void", "Eternal", "Golden", "Dark", "Holy", "Silent", 
-  "Burning", "Frozen", "Storm", "Lunar", "Solar", "Iron", "Mystic", "Phantom", 
-  "Ghost", "Omega", "Alpha", "Zen", "Blazing", "Hidden", "Raging", "Cursed"
-];
-
-const suffixes = [
-  "Slayer", "Hokage", "Shinobi", "Reaper", "Titan", "Hunter", "Pirate", "King", 
-  "Queen", "Knight", "Spirit", "Demon", "God", "Hero", "Villain", "Warrior", 
-  "Sage", "Master", "Legend", "Ronin", "Samurai", "Bender", "Alchemist"
-];
-
-const coreNames = [
-  "Naruto", "Sasuke", "Luffy", "Zoro", "Goku", "Vegeta", "Ichigo", "Rukia", 
-  "Tanjiro", "Nezuko", "Zenitsu", "Inosuke", "Mikasa", "Eren", "Levi", "Armin",
-  "Saitama", "Genos", "Deku", "Bakugo", "Todoroki", "Gojo", "Itadori", "Megumi",
-  "Nobara", "Killua", "Gon", "Kurapika", "Hisoka", "Edward", "Alphonse", "Mustang",
-  "Spike", "Faye", "Jet", "Alucard", "Seras", "Kaneki", "Touka", "Kirito", 
-  "Asuna", "Sinon", "Natsu", "Lucy", "Gray", "Erza", "Light", "Ryuk", "Lelouch", 
-  "Suzaku", "Shinji", "Rei", "Asuka", "Mitsuha", "Taki", "Rimuru", "Ainz",
-  "Soma", "Erina", "Meliodas", "Ban", "King", "Escanor", "Guts", "Griffith",
-  "Yusuke", "Hiei", "Kurama", "Kenshin", "Vash", "Mugen", "Jin", "Alibaba", "Morgiana"
-];
+const prefixes = ["Shadow", "Crimson", "Void", "Eternal", "Golden", "Dark", "Holy", "Silent", "Burning", "Frozen", "Storm", "Lunar", "Solar", "Iron", "Mystic", "Phantom", "Ghost", "Omega", "Alpha", "Zen", "Blazing", "Hidden", "Raging", "Cursed"];
+const suffixes = ["Slayer", "Hokage", "Shinobi", "Reaper", "Titan", "Hunter", "Pirate", "King", "Queen", "Knight", "Spirit", "Demon", "God", "Hero", "Villain", "Warrior", "Sage", "Master", "Legend", "Ronin", "Samurai", "Bender", "Alchemist"];
+const coreNames = ["Naruto", "Sasuke", "Luffy", "Zoro", "Goku", "Vegeta", "Ichigo", "Rukia", "Tanjiro", "Nezuko", "Zenitsu", "Inosuke", "Mikasa", "Eren", "Levi", "Armin", "Saitama", "Genos", "Deku", "Bakugo", "Todoroki", "Gojo", "Itadori", "Megumi", "Nobara", "Killua", "Gon", "Kurapika", "Hisoka", "Edward", "Alphonse", "Mustang", "Spike", "Faye", "Jet", "Alucard", "Seras", "Kaneki", "Touka", "Kirito", "Asuna", "Sinon", "Natsu", "Lucy", "Gray", "Erza", "Light", "Ryuk", "Lelouch", "Suzaku", "Shinji", "Rei", "Asuka", "Mitsuha", "Taki", "Rimuru", "Ainz", "Soma", "Erina", "Meliodas", "Ban", "King", "Escanor", "Guts", "Griffith", "Yusuke", "Hiei", "Kurama", "Kenshin", "Vash", "Mugen", "Jin", "Alibaba", "Morgiana"];
 
 function generateCoolAnimeToken() {
   const roll = Math.random();
   const name = coreNames[Math.floor(Math.random() * coreNames.length)];
-  
-  if (roll < 0.4) {
-    // Prefix style (e.g. Shadow-Naruto)
-    const pre = prefixes[Math.floor(Math.random() * prefixes.length)];
-    return `${pre} ${name}`;
-  } else if (roll < 0.8) {
-    // Suffix style (e.g. Luffy-King)
-    const suf = suffixes[Math.floor(Math.random() * suffixes.length)];
-    return `${name} ${suf}`;
-  } else {
-    // Full Combo (e.g. Dark-Zoro-Slayer)
-    const pre = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const suf = suffixes[Math.floor(Math.random() * suffixes.length)];
-    return `${pre} ${name} ${suf}`;
-  }
+  if (roll < 0.4) return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${name}`;
+  if (roll < 0.8) return `${name} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+  return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${name} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
 }
-
-/* ================================
-   TOKEN HANDLING
-================================ */
 
 const tokenInput = document.getElementById('tokenInput');
 const openBtn = document.getElementById('openBtn');
@@ -163,7 +301,6 @@ async function ensureToken(token) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token })
   });
-
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Token API error');
   return data;
@@ -172,7 +309,6 @@ async function ensureToken(token) {
 openBtn.onclick = async () => {
   const token = tokenInput.value.trim();
   if (!token) return showMsg('Please enter a token');
-
   try {
     await ensureToken(token);
     window.location.href = `/upload.html?token=${encodeURIComponent(token)}`;
@@ -184,7 +320,6 @@ openBtn.onclick = async () => {
 createBtn.onclick = async () => {
   const token = generateCoolAnimeToken();
   tokenInput.value = token;
-
   try {
     await ensureToken(token);
     showMsg('Token created: ' + token, 'success');
