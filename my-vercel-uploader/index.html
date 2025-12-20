@@ -280,13 +280,13 @@
       </svg>
     </div>
 
-    <h2 class="initial-text">Portal Login</h2>
+    <h2 class="initial-text">Portal Access</h2>
 
     <div class="login-container">
       <div class="loginBx">
         <h2 class="token-title text-center">Enter Token</h2>
         <p class="token-desc text-center">
-          Secure access to your cloud storage. Existing tokens will be loaded, new ones registered.
+          Existing tokens will be loaded, new ones registered.
         </p>
 
         <div class="flex flex-col gap-3">
@@ -294,7 +294,7 @@
             <input
               id="tokenInput"
               type="text"
-              placeholder="Enter access token"
+              placeholder="Eg. Qloud"
               class="flex-1 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm"
             />
             <button
@@ -407,7 +407,6 @@ createBtn.onclick = async () => {
   tokenInput.value = token;
   try {
     await ensureToken(token);
-    showMsg('Token created: ' + token, 'success');
   } catch (e) {
     showMsg('Failed to create new token');
   }
