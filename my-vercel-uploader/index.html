@@ -6,17 +6,29 @@
 <title>Cloud Storage Portal</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Updated Spline Viewer Library -->
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.27/build/spline-viewer.js"></script>
 
 <style>
   @import url("https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700&display=swap");
 
   body {
-    background-color: #f1f5f9;
+    background-color: transparent;
     font-family: "Poppins", sans-serif;
     color: #0f172a;
     min-height: 100vh;
     margin: 0;
     overflow-x: hidden;
+  }
+
+  /* Spline Background Container */
+  #spline-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
   }
 
   /* Fixed wrapper for top-right positioning */
@@ -25,6 +37,7 @@
     top: 32px;
     right: 32px;
     z-index: 1000;
+    pointer-events: none;
   }
 
   /* Container for the animated box */
@@ -47,10 +60,12 @@
     border: 1px solid #e2e8f0;
     cursor: pointer;
     overflow: hidden;
+    pointer-events: auto;
   }
 
-  /* Expanded state - Height adjusted to fit content exactly */
-  .box:hover {
+  /* Expanded state - Triggered by hover OR focus */
+  .box:hover,
+  .box.is-focused {
     width: 420px;
     height: 330px; 
     box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.12);
@@ -76,14 +91,16 @@
     margin-left: 24px;
   }
 
-  .box:hover .initial-text {
+  .box:hover .initial-text,
+  .box.is-focused .initial-text {
     opacity: 0;
     transform: scale(0.95);
   }
 
-  /* Faster Instructional Sequence */
+  /* Mouse Guide Animation */
   .mouse-guide {
     position: absolute;
+    top: 20px;
     left: -30px;
     z-index: 1002;
     color: #6366f1;
@@ -99,37 +116,38 @@
     left: 0;
     width: 20px;
     height: 20px;
-    background: rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.4);
     border-radius: 50%;
-    transform: scale(0);
+    transform: translate(-50%, -50%) scale(0);
     opacity: 0;
     animation: clickRipple 3.5s infinite ease-in-out;
   }
 
-  .box:hover .mouse-guide {
+  .box:hover .mouse-guide,
+  .box.is-focused .mouse-guide {
     opacity: 0 !important;
-    animation: none;
+    animation: none !important;
   }
 
   @keyframes guideSequence {
-    0% { left: 10px; opacity: 0; transform: scale(1); }
+    0% { left: -20px; opacity: 0; transform: scale(1); }
     10% { opacity: 1; }
-    35% { left: 40px; opacity: 1; transform: scale(1); }
+    40% { left: 45px; opacity: 1; transform: scale(1); }
     45% { transform: scale(0.8); }
-    50% { transform: scale(1.1); }
-    55% { transform: scale(1); }
-    85% { left: 40px; opacity: 1; }
-    100% { left: 60px; opacity: 0; }
+    50% { transform: scale(1); }
+    75% { left: 45px; opacity: 1; }
+    85% { left: 80px; opacity: 0; }
+    100% { left: 80px; opacity: 0; }
   }
 
   @keyframes clickRipple {
-    0%, 45% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.5); opacity: 0.6; }
-    65% { transform: scale(2.5); opacity: 0; }
-    100% { transform: scale(2.5); opacity: 0; }
+    0%, 45% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.6; }
+    65% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+    100% { opacity: 0; }
   }
   
-  /* Form Content Styling - Reduced padding to fit exactly */
+  /* Form Content Styling */
   .login-container {
     position: absolute;
     inset: 0;
@@ -144,7 +162,8 @@
     transition-delay: 0.05s;
   }
 
-  .box:hover .login-container {
+  .box:hover .login-container,
+  .box.is-focused .login-container {
     opacity: 1;
     pointer-events: auto;
   }
@@ -156,7 +175,8 @@
     transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), filter 0.5s ease;
   }
   
-  .box:hover .loginBx {
+  .box:hover .loginBx,
+  .box.is-focused .loginBx {
     transform: translateY(0);
     filter: blur(0);
   }
@@ -212,20 +232,21 @@
 
 <div id="msgBox"></div>
 
+<!-- New Interactive Spline Background -->
+<div id="spline-bg">
+  <spline-viewer url="https://prod.spline.design/X0Iyfpl6NpQd1AHX/scene.splinecode"></spline-viewer>
+</div>
+
 <div class="box-wrapper">
-  <div class="box">
-    <!-- Faster Enhanced Mouse Guide -->
+  <div class="box" id="portalBox">
     <div class="mouse-guide">
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
-        <path d="m13 13 6 6"></path>
       </svg>
     </div>
 
-    <!-- Initial hint text -->
     <h2 class="initial-text">Portal Login</h2>
 
-    <!-- MAIN INTERACTION PANEL -->
     <div class="login-container">
       <div class="loginBx">
         <h2 class="token-title text-center">Enter Token</h2>
@@ -291,9 +312,19 @@ function generateCoolAnimeToken() {
   return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${name} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
 }
 
+const portalBox = document.getElementById('portalBox');
 const tokenInput = document.getElementById('tokenInput');
 const openBtn = document.getElementById('openBtn');
 const createBtn = document.getElementById('createBtn');
+
+// Prevent portal collapse when focused
+tokenInput.addEventListener('focus', () => {
+  portalBox.classList.add('is-focused');
+});
+
+tokenInput.addEventListener('blur', () => {
+  portalBox.classList.remove('is-focused');
+});
 
 async function ensureToken(token) {
   const res = await fetch('/api/token', {
