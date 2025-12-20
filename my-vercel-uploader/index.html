@@ -225,6 +225,42 @@
     margin-bottom: 1.5rem;
     line-height: 1.4;
   }
+
+  /* --- NEW: Bottom Right Utility (Watermark Area) --- */
+  .corner-ui {
+    position: fixed;
+    bottom: 14px;
+    right: 14px;
+    z-index: 2000;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    padding: 10px 14px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+  }
+
+  .corner-ui:hover {
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+  }
 </style>
 </head>
 
@@ -234,7 +270,7 @@
 
 <!-- New Interactive Spline Background -->
 <div id="spline-bg">
-  <spline-viewer url="https://prod.spline.design/X0Iyfpl6NpQd1AHX/scene.splinecode"></spline-viewer>
+  <spline-viewer id="mainSpline" url="https://prod.spline.design/X0Iyfpl6NpQd1AHX/scene.splinecode"></spline-viewer>
 </div>
 
 <div class="box-wrapper">
@@ -282,6 +318,12 @@
   </div>
 </div>
 
+<!-- Bottom-right Utility Widget -->
+<div class="corner-ui" onclick="toggleRobo()">
+  <div class="dot" id="roboDot"></div>
+  <span id="roboText">Robo Active</span>
+</div>
+
 <script>
 function showMsg(text, type = 'error') {
   const box = document.getElementById('msgBox');
@@ -298,6 +340,19 @@ function showMsg(text, type = 'error') {
       box.style.opacity = '1';
     }, 300);
   }, 3500);
+}
+
+// --- NEW: Robo Toggle Logic ---
+let roboEnabled = true;
+function toggleRobo() {
+  const spline = document.getElementById('mainSpline');
+  const dot = document.getElementById('roboDot');
+  const text = document.getElementById('roboText');
+  
+  roboEnabled = !roboEnabled;
+  spline.style.pointerEvents = roboEnabled ? 'auto' : 'none';
+  dot.style.background = roboEnabled ? '#22c55e' : '#ef4444';
+  text.textContent = roboEnabled ? 'Robo Active' : 'Robo Paused';
 }
 
 const prefixes = ["Shadow", "Crimson", "Void", "Eternal", "Golden", "Dark", "Holy", "Silent", "Burning", "Frozen", "Storm", "Lunar", "Solar", "Iron", "Mystic", "Phantom", "Ghost", "Omega", "Alpha", "Zen", "Blazing", "Hidden", "Raging", "Cursed"];
