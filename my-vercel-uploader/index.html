@@ -56,33 +56,32 @@
   <div class="card-glass p-8">
     <h2 class="text-2xl font-bold text-slate-900 mb-2 text-center">Enter your token</h2>
     <p class="text-sm text-slate-500 mb-8 text-center">
-If the token exists, you’ll enter it. If not, it will be created automatically.
-
+      If the token exists, you’ll enter it. If not, it will be created automatically.
     </p>
 
     <div class="flex flex-col gap-3">
-      <input
-        id="tokenInput"
-        type="text"
-        placeholder="paste or create token"
-        class="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-center font-mono"
-      />
+      <div class="flex gap-2">
+        <input
+          id="tokenInput"
+          type="text"
+          placeholder="paste or create token"
+          class="flex-1 px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono"
+        />
+        <button
+          id="openBtn"
+          class="px-6 py-3 rounded-lg font-semibold primary-btn shadow-sm"
+        >
+          Open
+        </button>
+      </div>
+
       <button
-        id="openBtn"
-        class="w-full py-3 rounded-lg font-semibold primary-btn shadow-sm"
+        id="createBtn"
+        class="w-full py-3 rounded-lg border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
       >
-        Open
+        Create new token
       </button>
     </div>
-
-    <button
-      id="createBtn"
-      class="w-full mt-4 py-3 rounded-lg border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
-    >
-      Create new token
-    </button>
-
-    
   </div>
 
 </div>
@@ -100,6 +99,54 @@ function showMsg(text, type = 'error') {
   box.style.border = `1px solid ${type === 'error' ? '#fecaca' : '#bbf7d0'}`;
   
   setTimeout(() => { box.style.display = 'none'; }, 3000);
+}
+
+/* ================================
+   INFINITE ANIME NAME GENERATOR
+================================ */
+
+const prefixes = [
+  "Shadow", "Crimson", "Void", "Eternal", "Golden", "Dark", "Holy", "Silent", 
+  "Burning", "Frozen", "Storm", "Lunar", "Solar", "Iron", "Mystic", "Phantom", 
+  "Ghost", "Omega", "Alpha", "Zen", "Blazing", "Hidden", "Raging", "Cursed"
+];
+
+const suffixes = [
+  "Slayer", "Hokage", "Shinobi", "Reaper", "Titan", "Hunter", "Pirate", "King", 
+  "Queen", "Knight", "Spirit", "Demon", "God", "Hero", "Villain", "Warrior", 
+  "Sage", "Master", "Legend", "Ronin", "Samurai", "Bender", "Alchemist"
+];
+
+const coreNames = [
+  "Naruto", "Sasuke", "Luffy", "Zoro", "Goku", "Vegeta", "Ichigo", "Rukia", 
+  "Tanjiro", "Nezuko", "Zenitsu", "Inosuke", "Mikasa", "Eren", "Levi", "Armin",
+  "Saitama", "Genos", "Deku", "Bakugo", "Todoroki", "Gojo", "Itadori", "Megumi",
+  "Nobara", "Killua", "Gon", "Kurapika", "Hisoka", "Edward", "Alphonse", "Mustang",
+  "Spike", "Faye", "Jet", "Alucard", "Seras", "Kaneki", "Touka", "Kirito", 
+  "Asuna", "Sinon", "Natsu", "Lucy", "Gray", "Erza", "Light", "Ryuk", "Lelouch", 
+  "Suzaku", "Shinji", "Rei", "Asuka", "Mitsuha", "Taki", "Rimuru", "Ainz",
+  "Soma", "Erina", "Meliodas", "Ban", "King", "Escanor", "Guts", "Griffith",
+  "Yusuke", "Hiei", "Kurama", "Kenshin", "Vash", "Mugen", "Jin", "Alibaba", "Morgiana"
+];
+
+function generateCoolAnimeToken() {
+  const roll = Math.random();
+  const name = coreNames[Math.floor(Math.random() * coreNames.length)];
+  
+  if (roll < 0.4) {
+    // Prefix style (e.g. Shadow-Naruto)
+    const pre = prefixes[Math.floor(Math.random() * prefixes.length)];
+    return `${pre} ${name}`;
+  } else if (roll < 0.8) {
+    // Suffix style (e.g. Luffy-King)
+    const suf = suffixes[Math.floor(Math.random() * suffixes.length)];
+    return `${name} ${suf}`;
+  } else {
+    // Full Combo (e.g. Dark-Zoro-Slayer)
+    const pre = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const suf = suffixes[Math.floor(Math.random() * suffixes.length)];
+    return `${pre} ${name} ${suf}`;
+  }
 }
 
 /* ================================
@@ -135,12 +182,14 @@ openBtn.onclick = async () => {
 };
 
 createBtn.onclick = async () => {
-  const token = Math.random().toString(36).slice(2, 12);
+  const token = generateCoolAnimeToken();
   tokenInput.value = token;
 
   try {
     await ensureToken(token);
+    showMsg('Token created: ' + token, 'success');
   } catch (e) {
+    showMsg('Failed to create new token');
   }
 };
 </script>
