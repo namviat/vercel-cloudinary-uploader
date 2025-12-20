@@ -140,9 +140,7 @@ createBtn.onclick = async () => {
 
   try {
     await ensureToken(token);
-    showMsg('Token created successfully', 'success');
   } catch (e) {
-    showMsg('Failed to create new token');
   }
 };
 </script>
